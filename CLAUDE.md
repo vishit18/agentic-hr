@@ -89,3 +89,15 @@ CVs in -> duplicates and updated CVs caught -> one profile per person with lates
 
 ## Working agreement
 Plan before coding anything bigger than one file. If a requirement is ambiguous, decide, write the assumption in docs/ARCHITECTURE.md section 7, and continue. Ask me only when a choice is hard to undo.
+### Phase gate (applies every session)
+Work one phase of docs/BUILD_PLAN.md at a time. When a phase is finished, stop. Before stopping:
+1. Run the tests (`docker compose run --rm api pytest -q tests`) and show the real result.
+2. Check the status page (http://localhost:8000, or /health) is green.
+3. Make a git commit for the phase.
+4. Give a short summary: what was built, what is partial, and anything you are unsure about.
+Then wait for the user's OK before starting the next phase. Do not begin the next phase on your own.
+
+### AI use in ingest
+Call the LLM only where code cannot decide. Contacts use regex, certificate/skill names use lookup tables,
+exact duplicates use file hashes, years of experience and nationality are computed or read by code.
+Heavy batch work pauses between batches (INGEST_BATCH_SIZE, INGEST_BATCH_PAUSE_SECONDS) so the laptop can cool.

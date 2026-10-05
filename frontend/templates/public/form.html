@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Hiring request · Cadence HR{% endblock %}
+{% block header %}
+<header class="topbar"><span class="brand">Cadence HR</span></header>
+{% endblock %}
+
+{% block content %}
+<div class="public-wrap">
+<section class="card">
+  <h1>Ask Cadence HR for help hiring</h1>
+  <p class="muted">Request for <strong>{{ company }}</strong>. Fill in what you know; we will come back to you if we need anything else.</p>
+  {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/apply/{{ token }}" enctype="multipart/form-data" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="hp" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <label class="field"><span>Your name</span><input name="contact_name" value="{{ values.contact_name or '' }}" required maxlength="300" autocomplete="name"></label>
+    <label class="field"><span>Your email</span><input type="email" name="contact_email" value="{{ values.contact_email or '' }}" required maxlength="320" autocomplete="email"></label>
+    <label class="field"><span>Job title</span><input name="job_title" value="{{ values.job_title or '' }}" required maxlength="300"></label>
+    <label class="field"><span>Location</span><input name="location" value="{{ values.location or '' }}" maxlength="300"></label>
+    <label class="field"><span>Number of roles</span><input name="num_roles" type="number" min="1" max="500" inputmode="numeric" value="{{ values.num_roles or 1 }}"></label>
+    <label class="field"><span>Description of the role</span><textarea name="description" rows="6" maxlength="20000">{{ values.description or '' }}</textarea></label>
+    <label class="field"><span>Must have (one per line)</span><textarea name="must_text" rows="4" maxlength="5000" placeholder="CFA&#10;5 years in banking">{{ values.must_text or '' }}</textarea></label>
+    <label class="field"><span>Nice to have (one per line)</span><textarea name="nice_text" rows="3" maxlength="5000">{{ values.nice_text or '' }}</textarea></label>
+    <label class="field"><span>Start date</span><input type="date" name="start_date" value="{{ values.start_date or '' }}"></label>
+    <details class="filter-more">
+      <summary>Only if the law or the client requires a nationality for this role</summary>
+      <label class="field"><span>Nationality required</span><input name="nationality" value="{{ values.nationality or '' }}" maxlength="100"></label>
+      <label class="field"><span>Why does the role require it?</span><textarea name="nationality_justification" rows="2" maxlength="1000">{{ values.nationality_justification or '' }}</textarea></label>
+    </details>
+    <label class="field"><span>Job description file (optional: PDF, Word or image)</span><input type="file" name="attachment" accept=".pdf,.docx,.png,.jpg,.jpeg"></label>
+    <button type="submit" class="btn-primary">Send request</button>
+  </form>
+</section>
+</div>
+{% endblock %}

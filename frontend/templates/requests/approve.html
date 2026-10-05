@@ -1,0 +1,49 @@
+{% extends "shell.html" %}
+{% block title %}Approve and send · Cadence HR Hub{% endblock %}
+{% block shell_class %}detail-only{% endblock %}
+{% block list_pane %}{% endblock %}
+
+{% block detail_pane %}
+<a class="back-inline" href="/requests/{{ r.id }}#shortlist">&larr; {{ r.reference }}</a>
+<h1>Approve and send</h1>
+<p class="muted">Nothing is sent until you press Send. You are choosing what <strong>{{ r.company }}</strong> will see.</p>
+{% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+
+{% if preview %}
+<section>
+  <h2>Preview: exactly what the company will receive</h2>
+  <p class="small muted">To: {{ recipient }} · Subject: {{ subject }}</p>
+  <pre class="mail-preview">{{ preview }}</pre>
+  {% set cvs = people|selectattr('cv_name')|list %}
+  {% if cvs %}<p class="small">Attached: {{ cvs|map(attribute='cv_name')|join(', ') }}</p>{% endif %}
+  <p class="small muted">Not included: scores, gaps, notes, other applications, nationality.{% if not people|selectattr('include_contact')|list %} Contact details are not included.{% endif %}</p>
+</section>
+{% endif %}
+
+<form method="post" action="/requests/{{ r.id }}/{{ 'send' if preview else 'approve' }}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label class="field"><span>Send to</span><input type="email" name="recipient" value="{{ recipient }}" required {{ 'readonly' if preview else '' }}></label>
+  <label class="field"><span>Subject</span><input name="subject" value="{{ subject }}" maxlength="200" {{ 'readonly' if preview else '' }}></label>
+
+  {% for item in items %}
+  {% set v = versions.get(item.candidate_id) %}
+  <fieldset class="share-card">
+    <legend><label><input type="checkbox" name="include_{{ item.id }}" value="1" {{ 'checked' if checked.get(item.id) else '' }} {% if preview %}onclick="return false"{% endif %}> {{ v.full_name if v else 'Candidate' }}</label></legend>
+    <label class="field"><span>Summary the company will read (you can edit it)</span>
+      <textarea name="summary_{{ item.id }}" rows="3" maxlength="1500" {{ 'readonly' if preview else '' }}>{{ summaries.get(item.id, '') }}</textarea></label>
+    <label><input type="checkbox" name="cv_{{ item.id }}" value="1" {{ 'checked' if cv_on.get(item.id) else '' }} {% if preview %}onclick="return false"{% endif %}> Attach their CV</label>
+    <label><input type="checkbox" name="contact_{{ item.id }}" value="1" {{ 'checked' if contact_on.get(item.id) else '' }} {% if preview %}onclick="return false"{% endif %}> Include their contact details</label>
+  </fieldset>
+  {% endfor %}
+
+  <div class="actions">
+    {% if preview %}
+    <button type="submit" class="btn-primary">Send to {{ recipient }}</button>
+    <a class="btn" href="/requests/{{ r.id }}/approve">Change something</a>
+    {% else %}
+    <button type="submit" class="btn-primary">Preview</button>
+    <a class="btn" href="/requests/{{ r.id }}">Cancel</a>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

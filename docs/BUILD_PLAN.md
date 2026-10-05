@@ -29,11 +29,11 @@ Already done: compose, Dockerfile, config, status page, worker heartbeat, base t
 - [x] Candidates list, filters, profile page, upload
 
 ## Phase 2: Hiring request loop (5h)
-- [ ] Public tokenised e-form + recruiter paste/upload route
-- [ ] Requirement Parser, completeness check, owner assignment
-- [ ] Filters -> retrieval -> scoring -> Matcher with verified quotes
-- [ ] Request page: shortlist, reorder/remove/add, notes, files, next steps
-- [ ] Approve and send (preview) -> Mailpit; decision log
+- [x] Public tokenised e-form + recruiter paste/upload route
+- [x] Requirement Parser, completeness check, owner assignment
+- [x] Filters -> retrieval -> scoring -> Matcher with verified quotes
+- [x] Request page: shortlist, reorder/remove/add, notes, files, next steps
+- [x] Approve and send (preview) -> Mailpit; decision log
 
 ## Phase 3: Control and trust (3h)
 - [ ] "Needs you" inbox as the home page

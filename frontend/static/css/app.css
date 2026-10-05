@@ -287,6 +287,41 @@ select, textarea { min-height: 44px; padding: 8px 12px; border: 1px solid var(--
 .shell.detail-only .list-pane { display: none; }
 .shell.detail-only .detail-pane { display: block; }
 
+/* ---------- Requests ---------- */
+.pill-muted { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+.link-box { margin: 8px 0 12px; }
+.copy-field { width: 100%; min-height: 44px; margin-top: 6px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; font: inherit; background: var(--surface); color: var(--text); }
+.inline, .inline-form { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+.inline-form { margin-top: 8px; }
+.inline-form select { width: auto; }
+.btn-quiet { border-color: transparent; background: transparent; color: var(--muted); }
+.req-list { list-style: none; margin: 0 0 12px; padding: 0; }
+.req-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.req-form { display: flex; flex: 1; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; }
+.req-form input[name="text"] { flex: 1 1 220px; min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; font: inherit; background: var(--surface); color: var(--text); }
+.req-form select { width: auto; }
+.short-card, .share-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin: 10px 0; box-shadow: var(--shadow); }
+.short-head { display: flex; align-items: flex-start; gap: 10px; }
+.rank { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; flex: none; }
+.score { margin-left: auto; }
+.checks-list { list-style: none; margin: 8px 0; padding: 0; }
+.checks-list li { padding: 2px 0; }
+.checks-list .met .mark { color: var(--ok); font-weight: 700; }
+.checks-list .unmet .mark { color: var(--bad); font-weight: 700; }
+.checks-list .unknown .mark { color: var(--warn); font-weight: 700; }
+.mark { display: inline-block; width: 1.2em; }
+.card-actions { margin-top: 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.mini { border-collapse: collapse; }
+.mini td { padding: 2px 12px 2px 0; }
+blockquote.plain { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--border); background: var(--bg); white-space: pre-wrap; }
+.mail-preview { white-space: pre-wrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; font-family: var(--font); }
+.share-card legend { font-weight: 600; padding: 0 6px; }
+.share-card label { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.share-card .field { display: flex; }
+.public-wrap { max-width: 640px; margin: 0 auto; }
+.hp { position: absolute; left: -9999px; height: 0; overflow: hidden; }
+
 @media (min-width: 768px) {
   .page { padding: 24px; }
   h1 { font-size: 1.6rem; }

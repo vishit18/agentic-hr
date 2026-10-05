@@ -1,0 +1,93 @@
+{% extends "shell.html" %}
+{% block title %}Hiring requests · Cadence HR Hub{% endblock %}
+{% block shell_class %}wide{% endblock %}
+
+{% block list_pane %}
+<div class="pane-head">
+  <h1 class="pane-title">Hiring requests</h1>
+  <div class="actions"><a class="btn btn-primary" href="/requests/new">New request</a></div>
+</div>
+
+<details class="filter-more link-box">
+  <summary>Get a link for a company to send us a request</summary>
+  <form method="post" action="/requests/links" class="stack form-narrow">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="field"><span>Company name</span><input name="company" required maxlength="200"></label>
+    <button type="submit" class="btn-primary">Create link</button>
+  </form>
+</details>
+{% if new_link %}
+<div class="notice" role="status">
+  Send this link to the company. It opens a form that only works for them:
+  <input class="copy-field" readonly value="{{ new_link }}" onclick="this.select()">
+</div>
+{% endif %}
+
+<form class="filters" method="get" action="/requests">
+  <div class="filter-grid">
+    <label class="field"><span>Company</span><input name="company" value="{{ q.company }}"></label>
+    <label class="field"><span>Owner</span>
+      <select name="owner"><option value="">Anyone</option>
+        {% for u in staff_users %}<option value="{{ u.id }}" {{ 'selected' if q.owner == u.id|string else '' }}>{{ u.name }}</option>{% endfor %}
+      </select></label>
+    <label class="field"><span>Status</span>
+      <select name="status"><option value="">Any</option>
+        {% for key, (label, cls) in labels.items() %}<option value="{{ key }}" {{ 'selected' if q.status == key else '' }}>{{ label }}</option>{% endfor %}
+      </select></label>
+    <label class="field"><span>Received from</span><input type="date" name="date_from" value="{{ q.date_from }}"></label>
+    <label class="field"><span>Received to</span><input type="date" name="date_to" value="{{ q.date_to }}"></label>
+  </div>
+  <div class="actions"><button type="submit">Filter</button><a class="small" href="/requests">Clear</a></div>
+</form>
+
+<p class="count"><strong>{{ total }}</strong> request{{ '' if total == 1 else 's' }}</p>
+
+{% if not rows %}
+<div class="empty">
+  {% if q.company or q.owner or q.status or q.date_from or q.date_to %}
+  <p><strong>No requests match.</strong></p><p class="muted"><a href="/requests">Clear the filters</a></p>
+  {% else %}
+  <p><strong>No hiring requests yet.</strong></p>
+  <p class="muted">When a company submits a request, a shortlist will appear here. Create a link above to send to a company, or add a request you received by email.</p>
+  {% endif %}
+</div>
+{% else %}
+<table class="results-table">
+  <thead><tr><th>Reference</th><th>Company</th><th>Role</th><th>Received</th><th>Owner</th><th>Status</th><th>Shortlist</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  {% set label, cls = labels.get(r.status, (r.status, 'pill-info')) %}
+  <tr>
+    <td><a href="/requests/{{ r.id }}">{{ r.reference }}</a></td>
+    <td>{{ r.company }}</td>
+    <td>{{ r.job_title or 'Not stated yet' }}</td>
+    <td><time title="{{ r.received_at|absdate }}">{{ r.received_at|reltime }}</time></td>
+    <td>{{ owners[r.owner_id].name if r.owner_id in owners else 'Unassigned' }}</td>
+    <td><span class="pill {{ cls }}">{{ label }}</span></td>
+    <td>{{ counts.get(r.id, 0) }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<ul class="cards">
+  {% for r in rows %}
+  {% set label, cls = labels.get(r.status, (r.status, 'pill-info')) %}
+  <li class="card-row">
+    <a href="/requests/{{ r.id }}"><strong>{{ r.job_title or 'Role not stated yet' }}</strong></a>
+    <span class="pill {{ cls }}">{{ label }}</span>
+    <div>{{ r.company }} · {{ r.reference }}</div>
+    <div class="small muted"><time title="{{ r.received_at|absdate }}">{{ r.received_at|reltime }}</time> · {{ owners[r.owner_id].name if r.owner_id in owners else 'Unassigned' }} · {{ counts.get(r.id, 0) }} on shortlist</div>
+  </li>
+  {% endfor %}
+</ul>
+{% if pages > 1 %}
+<nav class="pager">
+  {% if page > 1 %}<a class="btn" href="{{ request.url.include_query_params(page=page - 1) }}">&larr; Previous</a>{% endif %}
+  <span class="muted small">Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}<a class="btn" href="{{ request.url.include_query_params(page=page + 1) }}">Next &rarr;</a>{% endif %}
+</nav>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block detail_pane %}{% endblock %}

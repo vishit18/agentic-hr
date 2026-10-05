@@ -1,0 +1,223 @@
+{% extends "shell.html" %}
+{% block title %}{{ r.reference }} · Cadence HR Hub{% endblock %}
+{% block shell_class %}detail-only{% endblock %}
+{% block list_pane %}{% endblock %}
+
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endmacro %}
+{% set label, cls = labels.get(r.status, (r.status, 'pill-info')) %}
+
+{% block detail_pane %}
+<a class="back-inline" href="/requests">&larr; Hiring requests</a>
+
+{% if sent %}<p class="notice" role="status">Sent. The shortlist email is in the mail catcher (Mailpit) and the decision is logged.</p>{% endif %}
+{% if error %}<p class="form-error" role="alert">{{ error|replace('+', ' ') }}</p>{% endif %}
+{% if undo %}
+<div class="notice" role="status">Candidate removed from the shortlist.
+  <form method="post" action="/requests/{{ r.id }}/shortlist/{{ undo }}/restore" class="inline">{{ csrf() }}<button type="submit">Undo</button></form>
+</div>
+{% endif %}
+
+<header class="profile-head">
+  <h1>{{ r.job_title or 'Role not stated yet' }}</h1>
+  <div class="badges">
+    <span class="pill {{ cls }}">{{ label }}</span>
+    <span class="pill pill-info">{{ r.reference }}</span>
+  </div>
+  <ul class="contact">
+    <li><strong>{{ r.company }}</strong></li>
+    {% if r.location %}<li>{{ r.location }}</li>{% endif %}
+    <li>{{ r.num_roles }} role{{ '' if r.num_roles == 1 else 's' }}</li>
+    <li>Received <time title="{{ r.received_at|absdate }}">{{ r.received_at|reltime }}</time></li>
+    {% if r.contact_name or r.contact_email %}<li>{{ r.contact_name or '' }} {{ r.contact_email or '' }}</li>{% endif %}
+  </ul>
+  <form method="post" action="/requests/{{ r.id }}/owner" class="inline-form">
+    {{ csrf() }}
+    <label class="small muted" for="owner-select">Handled by</label>
+    <select id="owner-select" name="user_id" onchange="this.form.submit()">
+      {% if not r.owner_id %}<option value="">Unassigned</option>{% endif %}
+      {% for u in staff_users %}<option value="{{ u.id }}" {{ 'selected' if r.owner_id == u.id else '' }}>{{ u.name }}</option>{% endfor %}
+    </select>
+    <noscript><button type="submit">Save</button></noscript>
+  </form>
+  {% if r.data.get('start_date') %}<p class="small muted">Start date: {{ r.data.start_date }}</p>{% endif %}
+</header>
+
+{% if r.status in ('new', 'shortlisting') %}
+<p class="notice" role="status" hx-get="/requests/{{ r.id }}/status-poll" hx-trigger="every 3s" hx-swap="innerHTML">Working on the shortlist…</p>
+{% endif %}
+{% if r.status == 'needs_info' and needs_item %}
+<div class="warn-box"><h2>More information is needed</h2>
+  <p>{{ needs_item.reason }}</p>
+  <p class="small">Suggested message to the company (copy it into an email; nothing has been sent):</p>
+  <textarea readonly rows="8" onclick="this.select()">{{ needs_item.payload.get('draft_question', '') }}</textarea>
+</div>
+{% endif %}
+{% if r.data.get('ai_pending') %}
+<p class="notice">The AI service was unavailable, so requirements were read by simple rules and explanations are basic. They will upgrade automatically when it is back.</p>
+{% endif %}
+{% for note in r.data.get('attachment_notes', []) %}<p class="notice">{{ note }}</p>{% endfor %}
+
+<section id="request-text">
+  <details><summary>What the company sent</summary>
+    {% if r.description %}<blockquote class="plain">{{ r.description }}</blockquote>{% endif %}
+    {% if r.data.get('must_text') %}<p><strong>Must have:</strong> {{ r.data.must_text }}</p>{% endif %}
+    {% if r.data.get('nice_text') %}<p><strong>Nice to have:</strong> {{ r.data.nice_text }}</p>{% endif %}
+    {% for a in atts %}<p><a href="/files/{{ a.file_id }}/original">Download {{ a.filename }}</a></p>{% endfor %}
+  </details>
+</section>
+
+<section id="requirements">
+  <h2>Requirements</h2>
+  {% if r.data.get('needs_rematch') %}
+  <div class="notice">Requirements changed.
+    <form method="post" action="/requests/{{ r.id }}/rematch" class="inline">{{ csrf() }}<button type="submit" class="btn-primary">Update shortlist</button></form>
+  </div>
+  {% endif %}
+  {% if reqs %}
+  <ul class="req-list">
+    {% for q in reqs %}
+    <li class="req-row">
+      <form method="post" action="/requests/{{ r.id }}/requirements/{{ q.id }}/update" class="req-form">
+        {{ csrf() }}
+        <select name="kind" aria-label="Must or nice to have"><option value="must" {{ 'selected' if q.kind == 'must' else '' }}>Must have</option><option value="nice" {{ 'selected' if q.kind == 'nice' else '' }}>Nice to have</option></select>
+        <input name="text" value="{{ q.text }}" aria-label="Requirement" maxlength="500">
+        <input type="hidden" name="category" value="{{ q.category }}">
+        <button type="submit">Save</button>
+      </form>
+      <form method="post" action="/requests/{{ r.id }}/requirements/{{ q.id }}/delete" class="inline">{{ csrf() }}<button type="submit" class="btn-quiet" aria-label="Remove requirement">Remove</button></form>
+      {% if q.category == 'nationality' %}<div class="small muted">Stated by the company. Reason given: {{ q.value.get('justification') or 'not recorded' }}</div>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">No requirements were found. Add what the company needs below.</p>{% endif %}
+  <form method="post" action="/requests/{{ r.id }}/requirements" class="req-form add-req">
+    {{ csrf() }}
+    <select name="kind" aria-label="Kind"><option value="must">Must have</option><option value="nice">Nice to have</option></select>
+    <input name="text" placeholder="Add a requirement, e.g. CFA or 5 years in banking" maxlength="500" aria-label="New requirement">
+    <button type="submit">Add</button>
+  </form>
+</section>
+
+<section id="shortlist">
+  <div class="pane-head"><h2>Shortlist</h2>
+    <div class="actions">
+      <a class="btn" href="/requests/{{ r.id }}/add">Add candidate</a>
+      {% if items and r.status != 'closed' %}<a class="btn btn-primary" href="/requests/{{ r.id }}/approve">Approve and send</a>{% endif %}
+    </div>
+  </div>
+  {% if summary %}
+  <p class="small muted">{{ summary.get('considered', 0) }} candidates passed the must-have filters; the best {{ summary.get('listed', 0) }} are ranked.
+    {% for n in summary.get('notes', []) %}{{ n }}. {% endfor %}</p>
+  {% endif %}
+
+  {% for item in items %}
+  {% set v = versions.get(item.candidate_id) %}
+  {% set ex = item.explanation or {} %}
+  <article class="short-card" id="item-{{ item.id }}">
+    <div class="short-head">
+      <span class="rank">{{ loop.index }}</span>
+      <div class="row-main">
+        <a href="/candidates/{{ item.candidate_id }}"><strong>{{ v.full_name if v else 'Candidate' }}</strong></a>
+        {% if item.status == 'shared' %}<span class="pill pill-ok">Shared</span>{% endif %}
+        {% if ex.get('manual') %}<span class="pill pill-info">Added by hand</span>{% endif %}
+        <div class="muted small">{{ v.current_title if v and v.current_title else '' }}{% if v and v.years_experience is not none %} · {{ '%.1f'|format(v.years_experience) }} years{% endif %}</div>
+      </div>
+      <span class="pill pill-info score" title="Weighted score out of 100. Open the breakdown below to see how it was worked out.">{{ '%.0f'|format(item.score or 0) }}</span>
+    </div>
+
+    {% if ex.get('summary') %}<p>{{ ex.summary }}</p>
+    <p class="small muted">{{ 'Written by AI from the CV' if ex.get('source') == 'model' else ('Added by a recruiter' if ex.get('source') == 'manual' else 'Automatic summary (AI was unavailable)') }}</p>{% endif %}
+
+    {% set reqres = item.score_breakdown.get('requirements', []) %}
+    {% if reqres %}
+    <ul class="checks-list">
+      {% for q in reqres %}
+      <li class="{{ q.status }}"><span class="mark" aria-hidden="true">{{ '✓' if q.status == 'met' else ('✗' if q.status == 'unmet' else '?') }}</span>
+        <span class="sr-only">{{ q.status }}:</span> {{ q.text }}{% if q.kind == 'nice' %} <span class="muted small">(nice to have)</span>{% endif %}
+        {% if q.evidence %}<span class="muted small"> · {{ q.evidence }}</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if ex.get('strengths') %}
+    <details class="source"><summary>Strengths, with quotes from the CV</summary>
+      <ul>{% for s in ex.strengths %}<li>{{ s.text }}<blockquote>{{ s.quote }}</blockquote></li>{% endfor %}</ul>
+    </details>
+    {% endif %}
+    {% if ex.get('gaps') %}<p class="small"><strong>Gaps:</strong> {{ ex.gaps|join('; ') }}</p>{% endif %}
+
+    <details class="source"><summary>How the score was worked out</summary>
+      <table class="mini"><tbody>
+        {% for k, val in item.score_breakdown.get('components', {}).items() %}
+        <tr><td>{{ k|replace('_', ' ')|capitalize }}</td><td>{{ ('%.0f%%'|format(val * 100)) if val is not none else 'not applicable' }}</td></tr>
+        {% endfor %}
+      </tbody></table>
+      <p class="small muted">Ranking is calculated by the hub from these parts. The AI only writes the explanation.</p>
+    </details>
+
+    {% if item.status != 'shared' and r.status != 'closed' %}
+    <div class="actions card-actions">
+      <form method="post" action="/requests/{{ r.id }}/shortlist/{{ item.id }}/move">{{ csrf() }}<input type="hidden" name="direction" value="up"><button type="submit" aria-label="Move up" {{ 'disabled' if loop.first else '' }}>↑</button></form>
+      <form method="post" action="/requests/{{ r.id }}/shortlist/{{ item.id }}/move">{{ csrf() }}<input type="hidden" name="direction" value="down"><button type="submit" aria-label="Move down" {{ 'disabled' if loop.last else '' }}>↓</button></form>
+      <form method="post" action="/requests/{{ r.id }}/shortlist/{{ item.id }}/remove">{{ csrf() }}<button type="submit">Remove</button></form>
+    </div>
+    {% endif %}
+  </article>
+  {% else %}
+  <div class="empty">
+    <p><strong>No shortlist yet.</strong></p>
+    <p class="muted">{% if r.status in ('new', 'shortlisting') %}The hub is working on it.{% elif r.status == 'needs_info' %}It will be built once the missing details are in.{% else %}No candidate passed the must-have requirements. Try relaxing one, or add a candidate by hand.{% endif %}</p>
+  </div>
+  {% endfor %}
+
+  {% if removed %}
+  <details class="source"><summary>Removed from the shortlist ({{ removed|length }})</summary>
+    <ul class="rows">{% for item in removed %}{% set v = versions.get(item.candidate_id) %}
+      <li class="row"><div class="row-main">{{ v.full_name if v else 'Candidate' }}</div>
+        <form method="post" action="/requests/{{ r.id }}/shortlist/{{ item.id }}/restore">{{ csrf() }}<button type="submit">Restore</button></form></li>{% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+</section>
+
+<section id="notes">
+  <h2>Notes and next steps</h2>
+  <form method="post" action="/requests/{{ r.id }}/notes" class="stack form-narrow">
+    {{ csrf() }}
+    <textarea name="body" rows="3" placeholder="Add a note, or a next step such as 'Call Gina on Monday'" aria-label="Note"></textarea>
+    <div class="actions"><select name="kind" aria-label="Type"><option value="note">Note</option><option value="next_step">Next step</option></select><button type="submit">Add</button></div>
+  </form>
+  <ul class="rows">
+    {% for n in notes %}
+    <li class="row"><div class="row-main"><span class="pill {{ 'pill-warn' if n.kind == 'next_step' else 'pill-info' }}">{{ 'Next step' if n.kind == 'next_step' else 'Note' }}</span>
+      {{ n.body }}<div class="muted small">{{ users[n.author_id].name if n.author_id in users else '' }} · <time title="{{ n.created_at|absdate }}">{{ n.created_at|reltime }}</time></div></div></li>
+    {% else %}<li class="muted">No notes yet.</li>{% endfor %}
+  </ul>
+</section>
+
+<section id="files">
+  <h2>Files</h2>
+  <ul class="rows">
+    {% for a in atts %}<li class="row"><div class="row-main">{{ a.filename }}<div class="muted small"><time title="{{ a.created_at|absdate }}">{{ a.created_at|reltime }}</time></div></div><a class="btn" href="/files/{{ a.file_id }}/original">Download</a></li>
+    {% else %}<li class="muted">No files yet.</li>{% endfor %}
+  </ul>
+  <form method="post" action="/requests/{{ r.id }}/files" enctype="multipart/form-data" class="stack form-narrow">
+    {{ csrf() }}
+    <input type="file" name="attachment" required aria-label="File to upload">
+    <button type="submit">Upload file</button>
+  </form>
+</section>
+
+<section id="timeline">
+  <h2>Timeline</h2>
+  <ol class="timeline">
+    {% for e in timeline %}<li>{{ e.text }}<div class="muted small">{{ e.who }} · <time title="{{ e.ts|absdate }}">{{ e.ts|reltime }}</time></div></li>{% endfor %}
+  </ol>
+</section>
+
+<form method="post" action="/requests/{{ r.id }}/close" class="actions">
+  {{ csrf() }}
+  {% if r.status == 'closed' %}<input type="hidden" name="reopen" value="1"><button type="submit">Reopen request</button>
+  {% else %}<button type="submit" class="btn-quiet">Close request</button>{% endif %}
+</form>
+{% endblock %}

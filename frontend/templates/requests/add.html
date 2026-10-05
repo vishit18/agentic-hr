@@ -1,0 +1,29 @@
+{% extends "shell.html" %}
+{% block title %}Add to shortlist · Cadence HR Hub{% endblock %}
+{% block shell_class %}wide{% endblock %}
+
+{% block list_pane %}
+<a class="back-inline" href="/requests/{{ r.id }}#shortlist">&larr; {{ r.reference }}</a>
+<h1 class="pane-title">Add a candidate to the shortlist</h1>
+<form method="get" class="stack form-narrow">
+  <input class="search-big" type="search" name="q" value="{{ q }}" placeholder="Search by name, skill or anything in the CV" autofocus>
+  <button type="submit">Search</button>
+</form>
+{% if result %}
+  <p class="count"><strong>{{ result.total }}</strong> candidate{{ '' if result.total == 1 else 's' }} found</p>
+  <ul class="rows">
+  {% for c in result.rows %}
+    <li class="row">
+      <div class="row-main"><a href="/candidates/{{ c.id }}" target="_blank" rel="noopener"><strong>{{ c.name }}</strong></a>
+        <div class="muted small">{{ c.title or '' }}{% if c.years is not none %} · {{ '%.1f'|format(c.years) }} yrs{% endif %} {{ c.certs|join(', ') }}</div></div>
+      <form method="post" action="/requests/{{ r.id }}/shortlist/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="candidate_id" value="{{ c.id }}">
+        <button type="submit">Add</button>
+      </form>
+    </li>
+  {% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}
+{% block detail_pane %}{% endblock %}

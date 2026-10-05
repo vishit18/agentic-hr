@@ -82,12 +82,12 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 | 2.2 | Postgres full text (tsvector) + semantic search (pgvector) over CV content | Built (keyword + meaning, merged by reciprocal rank). Semantic distance cut-off not yet tuned on the full folder |
 | 2.3 | Filters: name, skills, years, education, quals, certs, industry, titles, nationality (when stated) | Built |
 | 2.4 | Results table/cards with highlights and counts | Built (table on desktop, cards on phone) |
-| 3.1-3.4 | Workflow B steps 5-8 | |
-| 3.5 | Approval gate before sharing | |
+| 3.1-3.4 | Workflow B steps 5-8 | Built. Hard filters in SQL, retrieval by meaning, transparent weighted score, explanations with verified quotes. Quality not yet measured (Phase 4) |
+| 3.5 | Approval gate before sharing | Built: preview, editable summaries, per-candidate CV and contact tick boxes, decision logged |
 | 4.1-4.5 | Section 4 | 4.1-4.3, 4.5 built (auto-link, possible-match review item with Adjudicator suggestion). 4.4 merge and undo: Phase 3 |
-| 5.1-5.7 | Request model, owner, shortlist and shared tables | |
+| 5.1-5.7 | Request model, owner, shortlist and shared tables | Built (list with filters, detail, owner reassign, shortlist and shared status) |
 | 5.8 | Quarterly report, Excel export | |
-| 5.9-5.12 | Notes, attachments, next steps, timeline | |
+| 5.9-5.12 | Notes, attachments, next steps, timeline | Built |
 | 6.1-6.4 | Add-candidate form with source; same dedup path | Built (form, optional CV, duplicate warning, source shown on profile) |
 | 7.1 | Private by default, role-based access, nothing leaves the machine | |
 | 7.2 | Export all data (CSV/JSON + original files) | |
@@ -115,6 +115,13 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 - Phones: Bahrain is tried first, then other likely regions, and a number is accepted only if valid in that region. Numbers without a country code from unlisted countries are not stored.
 - Applied date for a CV is the file modified time. Two CVs for the same person: the later file becomes current; an older file arriving later is stored but does not replace it.
 - Model calls are limited to 2 at a time (`LLM_MAX_CONCURRENT`) so queued work does not count against the model timeout. A timed-out call does not stop Ollama generating, so retrying too fast makes things slower.
+- A company link is a signed token containing the company name; the company field on the public form cannot be changed. Links last 400 days. Email addresses on the approve screen must be valid; the reserved `.test` domain is allowed for demos, `.local` is not.
+- Hard filters: a required certificate must be on the profile or mentioned in the CV text; a minimum number of years excludes only candidates whose years are known and too low (unknown years are kept and shown as unknown). A stated nationality requirement keeps only CVs that state that nationality.
+- Ranking is code only (weights in config). The Matcher agent writes the explanation and cannot change the order. Only the top 15 are listed and explained.
+- Request attachments are stored in `.requests/` inside the inbox folder, which the CV poller ignores.
+- Engineers are blocked from the requests pages; candidate pages are still open to every login. Tightening candidates to recruiter and hr_admin is planned for Phase 5.
+- Local model limits: with LLM_NUM_CTX=4096 only the first 7000 characters of a CV or request are sent to the model. Measured CVs were 2.9k to 4.5k characters.
+- Ingest pauses for INGEST_BATCH_PAUSE_SECONDS after every INGEST_BATCH_SIZE processed CVs so the laptop can cool. Request and other jobs keep running during the pause.
 - (add more as decisions are made)
 
 ## 8. Defence checklist

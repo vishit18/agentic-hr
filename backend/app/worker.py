@@ -10,6 +10,7 @@ import signal
 import socket
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 from types import FrameType
 
@@ -19,7 +20,7 @@ from app.config import settings
 from app.core import queue
 from app.core.audit import audit
 from app.core.db import SessionLocal
-from app.workflows import cv_embed, cv_intake  # noqa: F401 - importing registers the job handlers
+from app.workflows import cv_embed, cv_intake, hiring_request  # noqa: F401 - importing registers the job handlers
 
 log = logging.getLogger("worker")
 _stop_event = threading.Event()
@@ -36,14 +37,46 @@ def count_files(path: Path) -> int:
     return sum(1 for p in path.iterdir() if p.is_file())
 
 
-def run_one(factory: "sessionmaker[Session]", worker_id: str) -> bool:
+class IngestPacer:
+    """Cool-down between batches of CVs. After every `batch_size` finished CV jobs, CV work pauses for
+    `pause_seconds` (requests and other jobs keep running). batch_size 0 turns it off."""
+
+    def __init__(self, batch_size: int, pause_seconds: int, clock: "Callable[[], float]" = time.monotonic) -> None:
+        self.batch_size, self.pause_seconds, self.clock = batch_size, pause_seconds, clock
+        self._done = 0
+        self._until = 0.0
+        self._lock = threading.Lock()
+
+    def paused(self) -> bool:
+        with self._lock:
+            return self.clock() < self._until
+
+    def seconds_left(self) -> float:
+        with self._lock:
+            return max(0.0, self._until - self.clock())
+
+    def finished_cv_job(self) -> None:
+        if self.batch_size <= 0:
+            return
+        with self._lock:
+            self._done += 1
+            if self._done % self.batch_size == 0:
+                self._until = self.clock() + self.pause_seconds
+                log.info("Batch of %s CV jobs done: pausing CV work for %s s to let the laptop cool down",
+                         self.batch_size, self.pause_seconds)
+
+
+pacer = IngestPacer(settings.ingest_batch_size, settings.ingest_batch_pause_seconds)
+
+
+def run_one(factory: "sessionmaker[Session]", worker_id: str, pacer: IngestPacer | None = None) -> bool:
     """Claim and run a single job. Returns False if there was nothing to do.
 
     A failing job never blocks others and never half-writes: the handler runs in its own
     transaction, which is rolled back on error before the failure is recorded.
     """
     with factory() as session:
-        job = queue.claim(session, worker_id)
+        job = queue.claim(session, worker_id, exclude_prefix="cv." if pacer and pacer.paused() else None)
         session.commit()
         if job is None:
             return False
@@ -71,6 +104,8 @@ def run_one(factory: "sessionmaker[Session]", worker_id: str) -> bool:
                 job_id=job_id,
             )
             session.commit()
+        if pacer and job_type == "cv.process":
+            pacer.finished_cv_job()
     except Exception as exc:  # noqa: BLE001 - any handler error is recorded, never crashes the loop
         log.warning("Job %s (%s) failed: %s", job_id, job_type, exc.__class__.__name__)
         with factory() as session:
@@ -84,7 +119,7 @@ def run_one(factory: "sessionmaker[Session]", worker_id: str) -> bool:
 def job_loop(worker_id: str) -> None:
     while not _stop_event.is_set():
         try:
-            did_work = run_one(SessionLocal, worker_id)
+            did_work = run_one(SessionLocal, worker_id, pacer)
         except Exception:  # noqa: BLE001 - e.g. database briefly unavailable
             log.exception("Worker loop error; retrying shortly")
             did_work = False

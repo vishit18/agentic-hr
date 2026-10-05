@@ -1,0 +1,22 @@
+{% extends "shell.html" %}
+{% block title %}New request · Cadence HR Hub{% endblock %}
+{% block shell_class %}wide{% endblock %}
+
+{% block list_pane %}
+<a class="back-inline" href="/requests">&larr; Hiring requests</a>
+<h1 class="pane-title">Add a request received by email</h1>
+<p class="muted">Paste the email or job description, or upload it as a file. The hub reads it, finds the requirements and prepares a shortlist.</p>
+{% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="/requests/new" enctype="multipart/form-data" class="stack form-narrow">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label class="field"><span>Company</span><input name="company" value="{{ values.company or '' }}" required></label>
+  <label class="field"><span>Contact name</span><input name="contact_name" value="{{ values.contact_name or '' }}"></label>
+  <label class="field"><span>Contact email</span><input type="email" name="contact_email" value="{{ values.contact_email or '' }}"></label>
+  <label class="field"><span>Job title (if you know it)</span><input name="job_title" value="{{ values.job_title or '' }}"></label>
+  <label class="field"><span>Location</span><input name="location" value="{{ values.location or '' }}"></label>
+  <label class="field"><span>Email or job description</span><textarea name="text" rows="9">{{ values.text or '' }}</textarea></label>
+  <label class="field"><span>Or upload a file (PDF, Word or image)</span><input type="file" name="attachment" accept=".pdf,.docx,.png,.jpg,.jpeg"></label>
+  <div class="actions"><button type="submit" class="btn-primary">Add request</button><a class="btn" href="/requests">Cancel</a></div>
+</form>
+{% endblock %}
+{% block detail_pane %}{% endblock %}

@@ -20,6 +20,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api import auth as auth_api
 from app.api import candidates as candidates_api
 from app.api import home as home_api
+from app.api import public_form as public_form_api
+from app.api import requests as requests_api
 from app.config import settings
 from app.core.auth import NotAuthenticated, get_current_user_optional
 from app.core.csrf import verify_csrf
@@ -41,6 +43,8 @@ app.state.session_factory = SessionLocal
 app.include_router(auth_api.router)
 app.include_router(home_api.router)
 app.include_router(candidates_api.router)
+app.include_router(requests_api.router)
+app.include_router(public_form_api.router)
 
 
 @app.exception_handler(NotAuthenticated)

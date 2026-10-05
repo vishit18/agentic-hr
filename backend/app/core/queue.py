@@ -62,11 +62,14 @@ def enqueue(
     return session.get(Job, job_id) if job_id is not None else None
 
 
-def claim(session: Session, worker_id: str) -> Job | None:
-    """Claim one runnable job (or a stale running one from a crashed worker). Caller commits."""
+def claim(session: Session, worker_id: str, exclude_prefix: str | None = None) -> Job | None:
+    """Claim one runnable job (or a stale running one from a crashed worker). Caller commits.
+
+    exclude_prefix skips job types such as "cv." (used for the cool-down pause between CV batches).
+    """
     now = _now()
     stale_before = now - timedelta(seconds=settings.job_stale_seconds)
-    job = session.scalars(
+    stmt = (
         select(Job)
         .where(
             or_(
@@ -77,7 +80,10 @@ def claim(session: Session, worker_id: str) -> Job | None:
         .order_by(Job.run_after, Job.id)
         .limit(1)
         .with_for_update(skip_locked=True)
-    ).first()
+    )
+    if exclude_prefix:
+        stmt = stmt.where(~Job.type.startswith(exclude_prefix))
+    job = session.scalars(stmt).first()
     if job is None:
         return None
     job.status = "running"

@@ -1,8 +1,6 @@
 """Candidates: search + filters, profile, CV upload, add sourced candidate, original file download."""
 from __future__ import annotations
 
-import hashlib
-import os
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File as FormFile, Form, HTTPException, Request, UploadFile
@@ -14,10 +12,10 @@ from app.config import settings
 from app.core.audit import audit
 from app.core.auth import get_current_user
 from app.core.db import get_db
+from app.core.uploads import save_upload as save_upload_to
 from app.core.models import AuditLog, Candidate, CandidateVersion, File, User
 from app.core.web import render
 from app.matching.search import PAGE_SIZE, Filters, search, split_terms
-from app.parsing.safety import check_file, sanitize_filename
 from app.workflows.cv_intake import register_file
 from app.workflows.manual_candidate import SOURCES, ManualInput, check_existing, create_manual
 
@@ -71,28 +69,8 @@ def candidates_list(request: Request, page: int = 1, user: User = Depends(get_cu
 # ---------------------------------------------------------------- upload and add
 
 async def save_upload(upload: UploadFile) -> tuple[Path, str] | str:
-    """Write an upload into the inbox after safety checks. Returns (path, sha) or an error message."""
-    limit = settings.max_upload_mb * 1024 * 1024
-    h = hashlib.sha256()
-    scratch = settings.inbox_dir / f".upload-{os.urandom(6).hex()}"
-    size = 0
-    try:
-        with scratch.open("wb") as out:
-            while chunk := await upload.read(1 << 20):
-                size += len(chunk)
-                if size > limit:
-                    return f"That file is larger than {settings.max_upload_mb} MB."
-                h.update(chunk)
-                out.write(chunk)
-        check = check_file(scratch)
-        if not check.ok:
-            return check.reason or "That file could not be accepted."
-        sha = h.hexdigest()
-        final = settings.inbox_dir / f"{sha[:12]}_{sanitize_filename(upload.filename or 'cv')}"
-        scratch.replace(final)
-        return final, sha
-    finally:
-        scratch.unlink(missing_ok=True)
+    """CV uploads land in the inbox folder, where the same workflow as any other CV picks them up."""
+    return await save_upload_to(upload, settings.inbox_dir)
 
 
 def queue_upload(db: Session, user: User, path: Path, sha: str, hints: dict | None) -> str:

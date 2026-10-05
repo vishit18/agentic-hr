@@ -80,13 +80,6 @@ def _section_page(request: Request, key: str, user: User, db: Session) -> Respon
     )
 
 
-@router.get("/requests")
-def requests_page(
-    request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)
-) -> Response:
-    return _section_page(request, "requests", user, db)
-
-
 @router.get("/activity")
 def activity_page(
     request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)
