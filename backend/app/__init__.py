@@ -1,0 +1,1 @@
+"""Cadence HR Intelligence Hub backend."""

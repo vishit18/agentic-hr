@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% if csrf_token is defined %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
+  <title>{% block title %}Cadence HR Hub{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+  <script src="{{ url_for('static', path='vendor/htmx.min.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/app.js') }}" defer></script>
+</head>
+<body{% block body_attrs %}{% endblock %}>
+  {% block header %}
+  <header class="topbar">
+    <a class="brand" href="/">Cadence HR Hub</a>
+    {% block topbar_actions %}{% endblock %}
+  </header>
+  {% endblock %}
+  {% block main %}
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+  {% endblock %}
+</body>
+</html>

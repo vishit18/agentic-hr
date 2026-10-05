@@ -1,0 +1,21 @@
+{% extends "shell.html" if user else "base.html" %}
+{% block title %}{{ code }} · Cadence HR Hub{% endblock %}
+
+{% if user %}
+{% block list_pane %}{% endblock %}
+{% block detail_pane %}
+<div class="empty">
+  <h1>{{ message }}</h1>
+  <p class="muted">Error {{ code }}.</p>
+  <a class="btn" href="/needs-you">Back to Needs you</a>
+</div>
+{% endblock %}
+{% else %}
+{% block content %}
+<section class="card login-card">
+  <h1>{{ message }}</h1>
+  <p class="muted">Error {{ code }}.</p>
+  <a class="btn" href="/login">Go to sign in</a>
+</section>
+{% endblock %}
+{% endif %}

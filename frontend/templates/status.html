@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}System status · Cadence HR Hub{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h1>System status</h1>
+  {% if all_ok %}
+    <p class="lead ok-text">Everything is connected. Ready to build.</p>
+  {% else %}
+    <p class="lead warn-text">Something needs attention. Fix the red items below, then refresh.</p>
+  {% endif %}
+
+  <ul class="checks">
+    {% for c in checks %}
+    <li class="check">
+      <span class="pill {{ 'pill-ok' if c.ok else 'pill-bad' }}">{{ 'OK' if c.ok else 'Problem' }}</span>
+      <div>
+        <strong>{{ c.name }}</strong>
+        <div class="muted">{{ c.detail }}</div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <p class="muted small">This page is temporary. It will become the "Needs you" home once the app is built.</p>
+</section>
+{% endblock %}

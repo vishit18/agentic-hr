@@ -1,0 +1,9 @@
+.git
+.env
+.env.*
+storage
+docs
+eval
+**/__pycache__
+**/.pytest_cache
+.claude

@@ -1,0 +1,36 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# candidate data: never commit
+cvs/
+data/
+storage/
+extracted/
+*.dump
+*.sql
+*.sqlite
+*.parquet
+*.npy
+
+# logs
+logs/
+*.log
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# local claude overrides
+.claude/settings.local.json

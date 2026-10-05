@@ -1,0 +1,32 @@
+{% extends "shell.html" %}
+{% block title %}Needs you · Cadence HR Hub{% endblock %}
+
+{% block list_pane %}
+<h1 class="pane-title">Needs you</h1>
+{% if items %}
+<ul class="rows">
+  {% for item in items %}
+  {% set label, cls = type_labels.get(item.type, (item.type, 'pill-info')) %}
+  <li class="row">
+    <span class="pill {{ cls }}">{{ label }}</span>
+    <div class="row-main">
+      <div>{{ item.summary }}</div>
+      {% if item.reason %}<div class="muted small">{{ item.reason }}</div>{% endif %}
+    </div>
+    <time class="muted small" datetime="{{ item.created_at.isoformat() }}" title="{{ item.created_at.strftime('%d %b %Y %H:%M') }}">{{ item.created_at.strftime('%d %b') }}</time>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty">
+  <p><strong>Nothing needs you right now.</strong></p>
+  <p class="muted">When an agent needs a person, it will appear here: a shortlist to approve, a possible duplicate, or a file it could not read.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block detail_pane %}
+<div class="empty">
+  <p class="muted">Select an item to see what happened and what you can do.</p>
+</div>
+{% endblock %}

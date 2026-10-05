@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{# App shell: top bar, left nav, list pane, reading pane. Mobile: bottom tabs, list OR detail with a back button. #}
+{% block body_attrs %} class="app"{% endblock %}
+
+{% block header %}
+<header class="topbar app-topbar">
+  <a class="brand" href="/needs-you">Cadence HR Hub</a>
+
+  <form class="global-search" action="/candidates" method="get" role="search">
+    <input type="search" name="q" placeholder="Search candidates" aria-label="Search candidates">
+  </form>
+
+  <a class="agent-indicator {{ 'is-busy' if agents_running else '' }}" href="/activity" title="Agent activity">
+    <span class="dot"></span>
+    <span class="agent-text">{{ agents_running ~ ' working' if agents_running else 'Agents idle' }}</span>
+  </a>
+
+  <button type="button" class="btn-flag" disabled title="Problem reporting arrives in Phase 3">Flag a problem</button>
+
+  <details class="user-menu">
+    <summary>{{ user.name }}</summary>
+    <div class="menu">
+      <div class="muted small">{{ user.email }} · {{ user.role|replace('_', ' ') }}</div>
+      {% for n in nav if not n.tab %}
+      <a href="{{ n.href }}">{{ n.label }}</a>
+      {% endfor %}
+      <form method="post" action="/logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">Sign out</button>
+      </form>
+    </div>
+  </details>
+</header>
+{% endblock %}
+
+{% block main %}
+<div class="shell">
+  <nav class="nav" aria-label="Main">
+    {% for n in nav %}
+    <a href="{{ n.href }}" class="nav-item {{ 'active' if section == n.key else '' }}">
+      <span>{{ n.label }}</span>
+      {% if n.key == 'needs-you' and needs_you_count %}<span class="badge">{{ needs_you_count }}</span>{% endif %}
+    </a>
+    {% endfor %}
+  </nav>
+
+  <section class="list-pane" aria-label="List">
+    {% block list_pane %}{% endblock %}
+  </section>
+
+  <section class="detail-pane" aria-label="Details">
+    <a class="back-link" href="{{ request.url.path }}">&larr; Back</a>
+    {% block detail_pane %}{% endblock %}
+  </section>
+</div>
+
+<nav class="tabbar" aria-label="Main (mobile)">
+  {% for n in nav if n.tab %}
+  <a href="{{ n.href }}" class="tab {{ 'active' if section == n.key else '' }}">
+    {{ n.label.replace('Hiring requests', 'Requests') }}
+    {% if n.key == 'needs-you' and needs_you_count %}<span class="badge">{{ needs_you_count }}</span>{% endif %}
+  </a>
+  {% endfor %}
+</nav>
+{% endblock %}

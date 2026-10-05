@@ -1,0 +1,15 @@
+{% extends "shell.html" %}
+{% block title %}{{ title }} · Cadence HR Hub{% endblock %}
+
+{% block list_pane %}
+<h1 class="pane-title">{{ title }}</h1>
+<div class="empty">
+  <p class="muted">{{ empty_text }}</p>
+</div>
+{% endblock %}
+
+{% block detail_pane %}
+<div class="empty">
+  <p class="muted">Nothing selected.</p>
+</div>
+{% endblock %}
