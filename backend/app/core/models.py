@@ -18,7 +18,7 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from app.config import settings
@@ -96,13 +96,44 @@ class CandidateVersion(Base):
     search_tsv: Mapped[Any] = mapped_column(
         TSVECTOR, Computed("to_tsvector('english', coalesce(search_text, ''))", persisted=True)
     )
+    # Denormalised from `data` so filters are plain indexed SQL
+    current_title: Mapped[str | None] = mapped_column(String(300))
+    years_experience: Mapped[float | None] = mapped_column(Float)
+    location: Mapped[str | None] = mapped_column(String(300))
+    nationality: Mapped[str | None] = mapped_column(String(100))  # only if stated in the CV
+    skills: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, server_default="{}")
+    certifications: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, server_default="{}")
+    qualifications: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, server_default="{}")
+    industries: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, server_default="{}")
+    titles: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, server_default="{}")
+    education_text: Mapped[str | None] = mapped_column(Text)
     auto_linked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # pending | ok | ai_pending | failed
     extraction_status: Mapped[str] = mapped_column(String(30), default="pending")
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = _now()
 
-    __table_args__ = (Index("ix_candidate_versions_tsv", "search_tsv", postgresql_using="gin"),)
+    __table_args__ = (
+        Index("ix_candidate_versions_tsv", "search_tsv", postgresql_using="gin"),
+        Index("ix_candidate_versions_skills", "skills", postgresql_using="gin"),
+        Index("ix_candidate_versions_certs", "certifications", postgresql_using="gin"),
+        Index("ix_candidate_versions_industries", "industries", postgresql_using="gin"),
+    )
+
+
+class CandidateIdentifier(Base):
+    """Every email / phone ever seen for a candidate. Conflicts across versions are kept as history."""
+
+    __tablename__ = "candidate_identifiers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    candidate_id: Mapped[int] = mapped_column(ForeignKey("candidates.id"), index=True)
+    candidate_version_id: Mapped[int | None] = mapped_column(ForeignKey("candidate_versions.id"))
+    kind: Mapped[str] = mapped_column(String(10))  # email | phone
+    value: Mapped[str] = mapped_column(String(320))  # lower-cased email or E.164 phone
+    created_at: Mapped[datetime] = _now()
+
+    __table_args__ = (Index("ix_candidate_identifiers_lookup", "kind", "value"),)
 
 
 class CandidateEmbedding(Base):
@@ -115,6 +146,15 @@ class CandidateEmbedding(Base):
     embedding: Mapped[Any] = mapped_column(Vector(settings.embedding_dim))
     model: Mapped[str] = mapped_column(String(100))
     created_at: Mapped[datetime] = _now()
+
+    __table_args__ = (
+        Index(
+            "ix_candidate_embeddings_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
 
 
 class Request(Base):

@@ -38,6 +38,7 @@ services:
       CVS_DIR: /cvs
       INBOX_DIR: /inbox
       FRONTEND_DIR: /srv/frontend
+      INTAKE_MAX_FILES: ${INTAKE_MAX_FILES:-0}
     volumes:
       - ./backend:/srv/backend
       - ./frontend:/srv/frontend
@@ -62,6 +63,7 @@ services:
       CVS_DIR: /cvs
       INBOX_DIR: /inbox
       FRONTEND_DIR: /srv/frontend
+      INTAKE_MAX_FILES: ${INTAKE_MAX_FILES:-0}
     volumes:
       - ./backend:/srv/backend
       - ./frontend:/srv/frontend

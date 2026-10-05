@@ -19,6 +19,7 @@ from app.config import settings
 from app.core import queue
 from app.core.audit import audit
 from app.core.db import SessionLocal
+from app.workflows import cv_embed, cv_intake  # noqa: F401 - importing registers the job handlers
 
 log = logging.getLogger("worker")
 _stop_event = threading.Event()
@@ -112,11 +113,19 @@ def main() -> None:
         settings.poll_seconds,
     )
 
+    seen: dict[str, tuple[int, float]] = {}
     while not _stop_event.is_set():
+        try:
+            with SessionLocal() as session:
+                queued = cv_intake.scan_folders(session, seen)
+        except Exception:  # noqa: BLE001 - e.g. database briefly unavailable; try again next poll
+            log.exception("Folder scan failed")
+            queued = 0
         log.info(
-            "Heartbeat: cvs=%s files, inbox=%s files",
+            "Heartbeat: cvs=%s files, inbox=%s files, newly queued=%s",
             count_files(settings.cvs_dir),
             count_files(settings.inbox_dir),
+            queued,
         )
         _stop_event.wait(settings.poll_seconds)
 

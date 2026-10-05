@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     inbox_dir: Path = Path("/inbox")
     frontend_dir: Path = Path("/srv/frontend")
     poll_seconds: int = 15
+    intake_max_files: int = 0  # 0 = no limit; used for timing runs
+    default_phone_region: str = "BH"
+    max_zip_uncompressed_mb: int = 100
+    max_image_pixels: int = 40_000_000
+    llm_max_cv_chars: int = 16000
 
     # Local AI (Ollama)
     ollama_base_url: str = "http://host.docker.internal:11434"

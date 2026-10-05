@@ -7,6 +7,7 @@ Errors are split so callers can pick the right fallback:
 from __future__ import annotations
 
 import time
+from functools import lru_cache
 from dataclasses import dataclass
 from typing import Generic, Literal, TypeVar
 
@@ -139,3 +140,9 @@ class OllamaClient:
         if missing:
             return OllamaHealth(False, "Missing models: " + ", ".join(missing), missing)
         return OllamaHealth(True, "Running, all models installed", [])
+
+
+@lru_cache(maxsize=1)
+def get_client() -> OllamaClient:
+    """Shared client for the worker and api. Tests patch this name where it is used."""
+    return OllamaClient()
