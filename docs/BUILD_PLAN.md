@@ -14,13 +14,19 @@ Already done: compose, Dockerfile, config, status page, worker heartbeat, base t
 - [x] App shell: 3-pane desktop, bottom tabs on mobile, login page
 
 ## Phase 1: CV intake loop (5h)
-- [ ] Folder poller (CVS_DIR + INBOX_DIR) -> files -> jobs
-- [ ] Safety checks, type detection, PDF/DOCX extraction, OCR fallback
-- [ ] Extractor agent + deterministic fallback, normalisation, years computed in code
-- [ ] Identity resolution rules + Adjudicator + review items
-- [ ] Embeddings + tsvector
-- [ ] Time 20 CVs; tune WORKER_CONCURRENCY or the model; record the numbers
-- [ ] Candidates list, filters, profile page, upload
+- [x] Folder poller (CVS_DIR + INBOX_DIR) -> files -> jobs
+- [x] Safety checks, type detection, PDF/DOCX extraction, OCR fallback
+- [x] Extractor agent + deterministic fallback, normalisation, years computed in code
+- [x] Identity resolution rules + Adjudicator + review items
+- [x] Embeddings + tsvector
+- [x] Time 20 CVs; tune WORKER_CONCURRENCY or the model; record the numbers
+  - 20 real CVs, qwen2.5:7b + nomic-embed-text, 4 worker threads, 2 concurrent model calls (`LLM_MAX_CONCURRENT`).
+  - GPU cool: 20 CVs in about 113 s (about 5.7 s per CV, extraction about 26 s each with 4 waiting in the queue). Full folder (488): about 46 min.
+  - GPU hot (86 C, throttling): 20 CVs in about 400 s (about 20 s per CV). Full folder: up to about 2.7 h. Start the full ingest well before the meeting, with the laptop plugged in and cool.
+  - The GPU reports 8 GB of VRAM, not 12 GB. qwen2.5:14b (about 9 GB) will not fit fully on the GPU: check its speed in Phase 2 and switch LLM_MODEL_RERANK to the 7b if explanations are too slow.
+  - Embedding: about 0.1 s per CV when the model is loaded.
+  - Findings that changed the design: see ARCHITECTURE.md section 7 (extractor schema, concurrency, phone regions).
+- [x] Candidates list, filters, profile page, upload
 
 ## Phase 2: Hiring request loop (5h)
 - [ ] Public tokenised e-form + recruiter paste/upload route

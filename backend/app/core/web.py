@@ -1,6 +1,7 @@
 """Template rendering shared by all pages: user, CSRF token, nav, counts."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import Request
@@ -14,6 +15,31 @@ from app.core.auth import read_session, set_session
 from app.core.models import Job, ReviewItem, User
 
 templates = Jinja2Templates(directory=str(settings.frontend_dir / "templates"))
+
+
+def reltime(value: datetime | None) -> str:
+    """'3 hours ago'. Templates also put the absolute date in a title attribute."""
+    if value is None:
+        return "never"
+    now = datetime.now(timezone.utc)
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    seconds = int((now - value).total_seconds())
+    if seconds < 0:
+        return "just now"
+    for unit, size in (("year", 31536000), ("month", 2592000), ("day", 86400), ("hour", 3600), ("minute", 60)):
+        if seconds >= size:
+            n = seconds // size
+            return f"{n} {unit}{'s' if n != 1 else ''} ago"
+    return "just now"
+
+
+def absdate(value: datetime | None) -> str:
+    return value.strftime("%d %b %Y %H:%M") if value else ""
+
+
+templates.env.filters["reltime"] = reltime
+templates.env.filters["absdate"] = absdate
 
 # key, label, href, roles allowed (None = everyone logged in), shown in the mobile tab bar
 NAV: list[dict[str, Any]] = [

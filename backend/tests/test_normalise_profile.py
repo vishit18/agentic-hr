@@ -34,6 +34,11 @@ def test_phones_become_e164() -> None:
     assert find_phones("Mobile +973 3600 1234 / office +44 20 7946 0958") == ["+97336001234", "+442079460958"]
 
 
+def test_local_numbers_without_country_code_are_matched_in_likely_regions() -> None:
+    assert find_phones("Mobile: 98765 43210") == ["+919876543210"]  # not valid in BH, valid in India
+    assert find_phones("Call 3600 1234 or +44 20 7946 0958") == ["+97336001234", "+442079460958"]
+
+
 def test_year_ranges_are_not_mistaken_for_phones() -> None:
     assert find_phones("Accountant, Jan 2018 - Present. Born 1985-03-12.") == []
 
@@ -143,18 +148,23 @@ def test_model_name_not_in_cv_falls_back_to_heuristic() -> None:
 
 
 def test_nationality_only_when_explicitly_stated() -> None:
-    ex = good_extraction()
-    ex.nationality, ex.nationality_snippet = "Bahraini", "Manama, Bahrain"
-    assert build_profile(ex, CV, ai_used=True, today=TODAY).data["nationality"] is None  # inferred from location
+    # Location alone never gives a nationality
+    assert build_profile(good_extraction(), CV, ai_used=True, today=TODAY).data["nationality"] is None
 
-    text = CV + "\nNationality: Indian"
-    ex.nationality, ex.nationality_snippet = "Indian", "Nationality: Indian"
-    built = build_profile(ex, text, ai_used=True, today=TODAY)
-    assert built.data["nationality"] == "Indian"
-    assert built.columns["nationality"] == "Indian"
+    for line, expected in [("Nationality: Indian", "Indian"), ("Citizenship - british", "British"),
+                           ("NATIONALITY : Sri Lankan", "Sri Lankan")]:
+        built = build_profile(good_extraction(), CV + "\n" + line, ai_used=True, today=TODAY)
+        assert built.data["nationality"] == expected and built.columns["nationality"] == expected
+        assert built.data["nationality_snippet"] == line.strip()
 
-    ex.nationality, ex.nationality_snippet = "Indian", "Nationality: Indian (made up quote)"
-    assert build_profile(ex, text, ai_used=True, today=TODAY).data["nationality"] is None
+    # Mentions inside other sentences are not statements of nationality
+    for text in ("I am proud of my Indian heritage and nationality is a sensitive topic",
+                 "Worked with citizenship services at the municipality"):
+        assert build_profile(good_extraction(), CV + "\n" + text, ai_used=True, today=TODAY).data["nationality"] is None
+
+
+def test_the_model_cannot_supply_a_nationality() -> None:
+    assert not hasattr(good_extraction(), "nationality")
 
 
 def test_low_confidence_when_most_items_are_hallucinated() -> None:

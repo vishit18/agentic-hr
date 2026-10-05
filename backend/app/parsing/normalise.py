@@ -43,10 +43,22 @@ def normalise_phone(value: str, region: str | None = None) -> str | None:
     return phonenumbers.format_number(number, phonenumbers.PhoneNumberFormat.E164)
 
 
+# Region tried first, then others in this order, for numbers written without a country code.
+# Assumption: many candidates live outside Bahrain; a number must be valid in the region to be accepted.
+PHONE_REGIONS = ["IN", "PK", "EG", "SA", "AE", "GB", "US", "PH", "JO", "LB", "BD", "LK", "NG", "KE", "OM", "KW", "QA"]
+
+
 def find_phones(text: str, region: str | None = None) -> list[str]:
+    first = region or settings.default_phone_region
+    found: dict[tuple[int, int], str] = {}
+    for reg in [first, *[r for r in PHONE_REGIONS if r != first]]:
+        for match in phonenumbers.PhoneNumberMatcher(text, reg, phonenumbers.Leniency.VALID):
+            found.setdefault(
+                (match.start, match.end),
+                phonenumbers.format_number(match.number, phonenumbers.PhoneNumberFormat.E164),
+            )
     seen: list[str] = []
-    for match in phonenumbers.PhoneNumberMatcher(text, region or settings.default_phone_region, phonenumbers.Leniency.VALID):
-        e164 = phonenumbers.format_number(match.number, phonenumbers.PhoneNumberFormat.E164)
+    for _, e164 in sorted(found.items()):
         if e164 not in seen:
             seen.append(e164)
     return seen

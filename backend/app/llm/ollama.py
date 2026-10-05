@@ -6,6 +6,7 @@ Errors are split so callers can pick the right fallback:
 """
 from __future__ import annotations
 
+import threading
 import time
 from functools import lru_cache
 from dataclasses import dataclass
@@ -69,13 +70,16 @@ class OllamaClient:
         self.num_ctx = num_ctx or settings.llm_num_ctx
         self.backoff_base = backoff_base
         self._http = httpx.Client(base_url=self.base_url, timeout=self.timeout, transport=transport)
+        # Waiting for a free slot happens here, not inside Ollama's queue, so it does not eat the HTTP timeout.
+        self._slots = threading.BoundedSemaphore(max(settings.llm_max_concurrent, 1))
 
     def _post(self, path: str, body: dict) -> dict:
         """POST with bounded retries on connection errors, timeouts and 5xx."""
         last: Exception | None = None
         for attempt in range(self.max_retries + 1):
             try:
-                resp = self._http.post(path, json=body)
+                with self._slots:
+                    resp = self._http.post(path, json=body)
                 if resp.status_code >= 500:
                     raise httpx.HTTPStatusError("server error", request=resp.request, response=resp)
                 if resp.status_code >= 400:

@@ -142,7 +142,7 @@ def test_new_cv_becomes_a_profile_with_embeddings(env) -> None:
     assert {"file.registered", "file.safety", "file.text", "agent.extract", "identity.resolved",
             "version.written", "agent.embed"} <= actions
     extract_row = db.scalars(select(AuditLog).where(AuditLog.action == "agent.extract")).one()
-    assert extract_row.model and extract_row.prompt_version == "extractor-v1" and extract_row.input_hash
+    assert extract_row.model and extract_row.prompt_version == "extractor-v4" and extract_row.input_hash
 
 
 def test_scan_is_idempotent(env) -> None:

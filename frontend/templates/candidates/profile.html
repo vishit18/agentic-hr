@@ -1,0 +1,112 @@
+{% extends "shell.html" %}
+{% block title %}{{ v.full_name if v and v.full_name else 'Candidate' }} · Cadence HR Hub{% endblock %}
+{% block shell_class %}detail-only{% endblock %}
+
+{% macro quote(snippet) %}
+{% if snippet %}<details class="source"><summary>Where this came from</summary><blockquote>{{ snippet }}</blockquote></details>{% endif %}
+{% endmacro %}
+
+{% block list_pane %}{% endblock %}
+
+{% block detail_pane %}
+<a class="back-inline" href="/candidates">&larr; Candidates</a>
+
+<header class="profile-head">
+  <h1>{{ v.full_name if v and v.full_name else 'Name not found' }}</h1>
+  <div class="badges">
+    {% if v and v.auto_linked %}<span class="pill pill-info" title="This CV was linked to an existing profile because the email or phone matched">Auto-linked</span>{% endif %}
+    {% if v and v.extraction_status == 'ai_pending' %}<span class="pill pill-warn">AI pending: details are partial</span>{% endif %}
+    {% if c.source %}<span class="pill pill-info">Source: {{ c.source }}</span>{% endif %}
+  </div>
+  <ul class="contact">
+    {% for e in d.get('emails', []) %}<li>{{ e }}</li>{% endfor %}
+    {% for p in d.get('phones', []) %}<li>{{ p }}</li>{% endfor %}
+    {% if d.get('location') %}<li>{{ d.location }}</li>{% endif %}
+    {% if v and v.years_experience is not none %}<li><strong>{{ '%.1f'|format(v.years_experience) }}</strong> years of experience</li>{% endif %}
+  </ul>
+  {% if c.source_detail %}<p class="muted small">Found via: {{ c.source_detail }}</p>{% endif %}
+</header>
+
+<nav class="tabs" aria-label="Profile sections">
+  {% for key, label in tabs %}
+  <a class="tab-link {{ 'active' if tab == key else '' }}" href="/candidates/{{ c.id }}?tab={{ key }}">{{ label }}</a>
+  {% endfor %}
+</nav>
+
+{% if tab == 'overview' %}
+  {% if d.get('summary') %}<section><h2>Summary</h2><p>{{ d.summary }}</p></section>{% endif %}
+  <section><h2>Skills</h2>
+    {% if d.get('skills') %}<p class="chips">{% for s in d.skills %}<span class="chip">{{ s }}</span>{% endfor %}</p>
+    {% else %}<p class="muted">No skills were found in this CV.</p>{% endif %}
+  </section>
+  <section><h2>Certificates</h2>
+    {% if d.get('certifications') %}<p class="chips">{% for s in d.certifications %}<span class="chip">{{ s }}</span>{% endfor %}</p>
+    {% else %}<p class="muted">None listed.</p>{% endif %}
+  </section>
+  <section><h2>Qualifications</h2>
+    {% if d.get('qualifications') %}<p class="chips">{% for s in d.qualifications %}<span class="chip">{{ s }}</span>{% endfor %}</p>
+    {% else %}<p class="muted">None listed.</p>{% endif %}
+  </section>
+  {% if d.get('nationality') %}<section><h2>Nationality</h2><p>{{ d.nationality }}</p>{{ quote(d.get('nationality_snippet')) }}<p class="small muted">Shown because the CV states it. It is never guessed.</p></section>{% endif %}
+  {% if d.get('industry_years') %}<section><h2>Years by industry</h2><ul>{% for k, y in d.industry_years.items() %}<li>{{ k|capitalize }}: {{ '%.1f'|format(y) }}</li>{% endfor %}</ul></section>{% endif %}
+  {% if d.get('issues') %}<section><h2>Things to check</h2><ul class="muted">{% for i in d.issues %}<li>{{ i }}</li>{% endfor %}</ul></section>{% endif %}
+
+{% elif tab == 'experience' %}
+  {% if d.get('experience') %}
+  <ol class="timeline">
+    {% for e in d.experience %}
+    <li>
+      <strong>{{ e.title }}</strong> · {{ e.company }}
+      <div class="muted small">{{ e.start[:7] if e.start else '?' }} to {{ 'present' if e.is_current else (e.end[:7] if e.end else '?') }}{% if e.industry %} · {{ e.industry }}{% endif %}</div>
+      {% if e.description %}<p>{{ e.description }}</p>{% endif %}
+      {{ quote(e.snippet) }}
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}<p class="muted">No work experience was found in this CV.</p>{% endif %}
+
+{% elif tab == 'education' %}
+  {% if d.get('education') %}
+  <ol class="timeline">
+    {% for e in d.education %}
+    <li><strong>{{ [e.degree, e.field]|select|join(', ') or 'Education' }}</strong> · {{ e.institution }}
+      <div class="muted small">{{ e.start or '' }}{% if e.start and e.end %} to {% endif %}{{ e.end or '' }}</div>
+      {{ quote(e.snippet) }}
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}<p class="muted">No education was found in this CV.</p>{% endif %}
+
+{% elif tab == 'versions' %}
+  <ul class="rows">
+    {% for ver in versions %}
+    <li class="row">
+      <div class="row-main">
+        <strong>Version {{ ver.version_no }}</strong>
+        {% if ver.id == c.current_version_id %}<span class="pill pill-ok">Current</span>{% endif %}
+        {% if ver.auto_linked %}<span class="pill pill-info">Auto-linked</span>{% endif %}
+        <div class="muted small">
+          {% set f = files.get(ver.file_id) %}
+          {{ f.original_name if f else 'Entered by hand (no CV file)' }} · received <time title="{{ ver.applied_at|absdate }}">{{ ver.applied_at|reltime }}</time>
+        </div>
+      </div>
+      {% if f %}<a class="btn" href="/files/{{ f.id }}/original">Download original</a>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+
+{% elif tab == 'applications' %}
+  <div class="empty"><p><strong>No applications yet.</strong></p>
+  <p class="muted">When this person is shortlisted or shared for a hiring request, it will appear here.</p></div>
+
+{% elif tab == 'activity' %}
+  {% if activity %}
+  <ul class="rows">
+    {% for a in activity %}
+    <li class="row"><div class="row-main"><strong>{{ a.action }}</strong>
+      <div class="muted small">{{ a.actor_name or a.actor_type }} · <time title="{{ a.ts|absdate }}">{{ a.ts|reltime }}</time></div></div></li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">No activity recorded yet.</p>{% endif %}
+{% endif %}
+{% endblock %}

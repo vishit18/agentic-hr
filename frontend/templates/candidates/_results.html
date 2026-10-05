@@ -1,0 +1,58 @@
+{% set has_filters = f.q or f.name or f.skills or f.certs or f.min_years is not none or f.max_years is not none or f.education or f.qualification or f.industry or f.title or f.nationality or f.source %}
+<p class="count"><strong>{{ result.total }}</strong> candidate{{ '' if result.total == 1 else 's' }} {{ f.describe() }}</p>
+{% if result.semantic_note %}<p class="notice">{{ result.semantic_note }}</p>{% endif %}
+
+{% if not result.rows %}
+<div class="empty">
+  {% if has_filters %}
+  <p><strong>No candidates match.</strong></p>
+  <p class="muted">Try removing a filter or using fewer words. <a href="/candidates">Clear all filters</a></p>
+  {% else %}
+  <p><strong>No candidates yet.</strong></p>
+  <p class="muted">As CVs are read, every person appears here with one profile. You can also upload a CV or add a candidate you found on LinkedIn.</p>
+  {% endif %}
+</div>
+{% else %}
+
+<table class="results-table">
+  <thead><tr><th>Name</th><th>Current title</th><th>Years</th><th>Top skills</th><th>Certificates</th><th>Last updated</th><th>Source</th></tr></thead>
+  <tbody>
+  {% for r in result.rows %}
+    <tr>
+      <td>
+        <a href="/candidates/{{ r.id }}"><strong>{{ r.name or 'Name not found' }}</strong></a>
+        {% if r.ai_pending %}<span class="pill pill-warn">AI pending</span>{% endif %}
+        {% if r.highlight %}<div class="snippet small muted">{{ r.highlight|safe }}</div>{% endif %}
+      </td>
+      <td>{{ r.title or '' }}</td>
+      <td>{{ '%.1f'|format(r.years) if r.years is not none else '' }}</td>
+      <td>{{ r.skills|join(', ') }}</td>
+      <td>{{ r.certs|join(', ') }}</td>
+      <td><time title="{{ r.updated|absdate }}">{{ r.updated|reltime }}</time></td>
+      <td>{{ r.source or '' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<ul class="cards">
+  {% for r in result.rows %}
+  <li class="card-row">
+    <a href="/candidates/{{ r.id }}"><strong>{{ r.name or 'Name not found' }}</strong></a>
+    {% if r.ai_pending %}<span class="pill pill-warn">AI pending</span>{% endif %}
+    <div>{{ r.title or '' }}{% if r.years is not none %} · {{ '%.1f'|format(r.years) }} yrs{% endif %}</div>
+    {% if r.certs %}<div class="small">{{ r.certs|join(', ') }}</div>{% endif %}
+    {% if r.highlight %}<div class="snippet small muted">{{ r.highlight|safe }}</div>{% endif %}
+    <div class="small muted"><time title="{{ r.updated|absdate }}">{{ r.updated|reltime }}</time>{% if r.source %} · {{ r.source }}{% endif %}</div>
+  </li>
+  {% endfor %}
+</ul>
+
+{% if pages > 1 %}
+<nav class="pager" aria-label="Pages">
+  {% if result.page > 1 %}<a class="btn" href="{{ request.url.include_query_params(page=result.page - 1) }}">&larr; Previous</a>{% endif %}
+  <span class="muted small">Page {{ result.page }} of {{ pages }}</span>
+  {% if result.page < pages %}<a class="btn" href="{{ request.url.include_query_params(page=result.page + 1) }}">Next &rarr;</a>{% endif %}
+</nav>
+{% endif %}
+{% endif %}

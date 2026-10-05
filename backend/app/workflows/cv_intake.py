@@ -32,6 +32,7 @@ from app.core.models import (
 )
 from app.dedup.identity import Resolution, resolve
 from app.llm.ollama import LLMUnavailable, LLMValidationError, get_client
+from app.parsing.normalise import normalise_email, normalise_phone
 from app.parsing.extract import OcrUnavailable, ParseError, extract_text
 from app.parsing.profile import BuiltProfile, build_profile
 from app.parsing.safety import check_file, sanitize_filename
@@ -53,10 +54,13 @@ def sha256_of(path: Path) -> str:
     return h.hexdigest()
 
 
-def register_file(session: Session, path: Path, origin: str, sha: str | None = None) -> File | None:
+def register_file(session: Session, path: Path, origin: str, sha: str | None = None,
+                  hints: dict[str, Any] | None = None) -> File | None:
     """Step 1: hash the file. A hash we have seen before is an exact duplicate: log and stop."""
     sha = sha or sha256_of(path)
     existing = session.scalar(select(File).where(File.sha256 == sha))
+    if existing and existing.stored_path == str(path):
+        return None  # same file at the same place (e.g. a UI upload we already registered)
     if existing:
         audit(
             session,
@@ -89,7 +93,7 @@ def register_file(session: Session, path: Path, origin: str, sha: str | None = N
         input=sha,
         output={"name": file.original_name, "origin": origin, "bytes": file.size_bytes},
     )
-    queue.enqueue(session, "cv.process", {"file_id": file.id}, dedupe_key=f"cv.process:{file.id}")
+    queue.enqueue(session, "cv.process", {"file_id": file.id, **(hints or {})}, dedupe_key=f"cv.process:{file.id}")
     return file
 
 
@@ -231,14 +235,31 @@ def maybe_adjudicate(session: Session, incoming: dict[str, Any], existing_versio
     return suggestion
 
 
+def apply_hints(built: BuiltProfile, hints: dict[str, Any]) -> None:
+    """Details a person typed in the Add candidate form. Contacts are validated by the same code as CV contacts."""
+    for email in hints.get("emails") or []:
+        norm = normalise_email(email)
+        if norm and norm not in built.data["emails"]:
+            built.data["emails"].append(norm)
+    for phone in hints.get("phones") or []:
+        norm = normalise_phone(phone)
+        if norm and norm not in built.data["phones"]:
+            built.data["phones"].append(norm)
+    if not built.data.get("name") and hints.get("name"):
+        built.data["name"] = built.columns["full_name"] = hints["name"].strip()[:300]
+        built.issues = [i for i in built.issues if i != "No name could be found"]
+        built.low_confidence = False
+
+
 def write_version(session: Session, resolution: Resolution, built: BuiltProfile, status: str, file: File | None,
-                  *, source: str, applied_at: datetime, created_by: int | None = None) -> tuple[Candidate, CandidateVersion]:
+                  *, source: str, applied_at: datetime, created_by: int | None = None,
+                  source_detail: str | None = None) -> tuple[Candidate, CandidateVersion]:
     """Step 9: new version row; the candidate's current pointer moves to the latest application."""
     if resolution.action == "auto_link" and resolution.candidate_id:
         candidate = session.get(Candidate, resolution.candidate_id)
         assert candidate is not None
     else:
-        candidate = Candidate(source=source, created_by=created_by)
+        candidate = Candidate(source=source, source_detail=source_detail, created_by=created_by)
         session.add(candidate)
         session.flush()
 
@@ -323,6 +344,9 @@ def process_cv(session: Session, job: Job) -> None:
     # steps 5-6
     built, status, _model = run_extraction(session, text_result.text, file.id, job.id)
 
+    hints = job.payload.get("hints") or {}
+    apply_hints(built, hints)
+
     # step 7
     resolution = resolve(session, built.data)
     audit(session, actor_type="system", actor_name="identity", action="identity.resolved", entity_type="file",
@@ -332,7 +356,9 @@ def process_cv(session: Session, job: Job) -> None:
     # step 9
     candidate, version = write_version(
         session, resolution, built, status, file,
-        source=ORIGIN_SOURCE.get(file.origin, file.origin), applied_at=_file_time(path),
+        source=hints.get("source") or ORIGIN_SOURCE.get(file.origin, file.origin),
+        source_detail=hints.get("source_detail"), applied_at=_file_time(path),
+        created_by=job.payload.get("created_by"),
     )
     file.status = "processed"
     audit(session, actor_type="system", actor_name="intake", action="version.written",

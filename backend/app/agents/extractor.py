@@ -16,13 +16,13 @@ from pydantic import BaseModel, Field
 from app.config import settings
 from app.llm.ollama import ChatResult, OllamaClient
 
-PROMPT_VERSION = "extractor-v1"
-_PROMPT = (Path(__file__).parent / "prompts" / "extractor_v1.txt").read_text(encoding="utf-8")
+PROMPT_VERSION = "extractor-v4"
+_PROMPT = (Path(__file__).parent / "prompts" / "extractor_v4.txt").read_text(encoding="utf-8")
 
 
 class ExpEntry(BaseModel):
-    title: str
-    company: str
+    title: str | None = None
+    company: str | None = None
     start: str | None = None
     end: str | None = None
     industry: str | None = None
@@ -31,7 +31,7 @@ class ExpEntry(BaseModel):
 
 
 class EduEntry(BaseModel):
-    institution: str
+    institution: str | None = None
     degree: str | None = None
     field: str | None = None
     start: str | None = None
@@ -40,16 +40,18 @@ class EduEntry(BaseModel):
 
 
 class Extracted(BaseModel):
+    # Field order matters: the model fills them in this order.
+    # Measured on 20 real CVs with this local 7B model: adding nationality/summary fields made it return
+    # empty experience for 9 of 20; with only the fields below it found experience for 20 of 20.
+    # Nationality is therefore not asked of the model at all: code reads it only from an explicit
+    # "Nationality: X" / "Citizenship: X" line (see parsing/profile.py).
     full_name: str | None = None
-    location: str | None = None
-    nationality: str | None = None
-    nationality_snippet: str | None = None
-    summary: str | None = None
     experience: list[ExpEntry] = Field(default_factory=list)
     education: list[EduEntry] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
     certifications: list[str] = Field(default_factory=list)
     qualifications: list[str] = Field(default_factory=list)
+    location: str | None = None
 
 
 def wrap_cv(text: str) -> str:

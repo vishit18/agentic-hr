@@ -1,0 +1,54 @@
+{% extends "shell.html" %}
+{% block title %}Add candidate · Cadence HR Hub{% endblock %}
+{% block shell_class %}wide{% endblock %}
+
+{% block list_pane %}
+<a class="back-inline" href="/candidates">&larr; Candidates</a>
+<h1 class="pane-title">Add a candidate</h1>
+<p class="muted">For someone found on LinkedIn or through a referral. The hub checks whether they are already in the database before saving.</p>
+
+{% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+
+{% if match %}
+<div class="warn-box" role="alert">
+  {% if match.action == 'auto_link' %}
+  <h2>This person is probably already in the database</h2>
+  {% elif match.action == 'ambiguous' %}
+  <h2>These details match more than one existing profile</h2>
+  {% else %}
+  <h2>Possible match found</h2>
+  {% endif %}
+  <ul>{% for e in match.evidence %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% if existing and existing_version %}
+  <p><a href="/candidates/{{ existing.id }}" target="_blank" rel="noopener">Open {{ existing_version.full_name }}</a> to compare (opens in a new tab).</p>
+  {% endif %}
+  {% if match.action == 'auto_link' %}
+  <p class="small">If you continue, these details are added to their existing profile as a new entry. You can undo it from their Activity tab.</p>
+  {% else %}
+  <p class="small">If you continue, a separate profile is created and a person is asked to review the possible duplicate.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<form method="post" action="/candidates/new" enctype="multipart/form-data" class="stack form-narrow">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% if match %}<input type="hidden" name="confirm" value="1">{% endif %}
+  <label class="field"><span>Full name</span><input name="name" value="{{ values.name or '' }}" required></label>
+  <label class="field"><span>Email</span><input type="email" name="email" value="{{ values.email or '' }}"></label>
+  <label class="field"><span>Phone</span><input type="tel" name="phone" value="{{ values.phone or '' }}" placeholder="+973 ..."></label>
+  <label class="field"><span>Location</span><input name="location" value="{{ values.location or '' }}"></label>
+  <label class="field"><span>Where did you find them?</span>
+    <select name="source">
+      {% for s in sources %}<option {{ 'selected' if values.source == s else '' }}>{{ s }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="field"><span>Profile link or notes</span><textarea name="source_detail" rows="3" placeholder="LinkedIn URL, who referred them, why they are a fit">{{ values.source_detail or '' }}</textarea></label>
+  <label class="field"><span>CV (optional)</span><input type="file" name="cv" accept=".pdf,.docx,.png,.jpg,.jpeg"></label>
+  <div class="actions">
+    <button type="submit" class="btn-primary">{{ 'Continue anyway' if match else 'Check and save' }}</button>
+    <a class="btn" href="/candidates">Cancel</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block detail_pane %}{% endblock %}

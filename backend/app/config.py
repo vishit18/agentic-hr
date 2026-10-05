@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     llm_num_ctx: int = 8192
     llm_timeout_seconds: int = 120
     llm_max_retries: int = 2
+    llm_max_concurrent: int = 2  # simultaneous model calls; the GPU runs them one after another anyway
     worker_concurrency: int = 4
     embedding_model: str = "nomic-embed-text"
     embedding_dim: int = 768

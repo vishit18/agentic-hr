@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import auth as auth_api
+from app.api import candidates as candidates_api
 from app.api import home as home_api
 from app.config import settings
 from app.core.auth import NotAuthenticated, get_current_user_optional
@@ -39,6 +40,7 @@ app.state.session_factory = SessionLocal
 
 app.include_router(auth_api.router)
 app.include_router(home_api.router)
+app.include_router(candidates_api.router)
 
 
 @app.exception_handler(NotAuthenticated)

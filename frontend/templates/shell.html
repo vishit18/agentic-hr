@@ -34,7 +34,7 @@
 {% endblock %}
 
 {% block main %}
-<div class="shell">
+<div class="shell {% block shell_class %}{% endblock %}">
   <nav class="nav" aria-label="Main">
     {% for n in nav %}
     <a href="{{ n.href }}" class="nav-item {{ 'active' if section == n.key else '' }}">

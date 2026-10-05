@@ -87,13 +87,6 @@ def requests_page(
     return _section_page(request, "requests", user, db)
 
 
-@router.get("/candidates")
-def candidates_page(
-    request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)
-) -> Response:
-    return _section_page(request, "candidates", user, db)
-
-
 @router.get("/activity")
 def activity_page(
     request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)

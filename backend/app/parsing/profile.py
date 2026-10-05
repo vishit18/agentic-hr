@@ -23,7 +23,11 @@ from app.parsing.normalise import (
 )
 from app.parsing.text import squash
 
-NATIONALITY_CUE = re.compile(r"\b(nationality|citizen(ship)?|national of)\b", re.IGNORECASE)
+# A whole line that starts with the label. Never inferred from anything else.
+NATIONALITY_LINE = re.compile(
+    r"^[ \t]*(?:nationality|citizenship)[ \t]*[:\-–][ \t]*(?P<value>[A-Za-z][A-Za-z \-]{2,30}?)[ \t]*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 @dataclass
@@ -78,8 +82,15 @@ def build_profile(
     industry_ranges: dict[str, list[tuple[date, date]]] = {}
     dropped = 0
     for e in ex.experience:
-        verified = _in_text(e.snippet, haystack, 6) or (_in_text(e.title, haystack) and _in_text(e.company, haystack))
-        if not verified:
+        # The 7B model often paraphrases snippets, so a quote is not required: the employer must be in the
+        # CV, or (no employer given) the title and a start year must be.
+        year = re.search(r"(19|20)\d\d", e.start or "")
+        verified = (
+            _in_text(e.snippet, haystack, 6)
+            or _in_text(e.company, haystack)
+            or (_in_text(e.title, haystack) and bool(year) and year.group(0) in haystack)
+        )
+        if not verified or not (e.title or e.company):
             dropped += 1
             continue
         start = parse_date(e.start, today=today)
@@ -90,11 +101,11 @@ def build_profile(
             if industry:
                 industry_ranges.setdefault(industry, []).append((start, end))
         elif e.start or e.end:
-            issues.append(f"Could not read dates for '{e.title}'")
+            issues.append(f"Could not read dates for '{e.title or e.company}'")
         experience.append(
             {
-                "title": e.title.strip(),
-                "company": e.company.strip(),
+                "title": (e.title or "").strip() or None,
+                "company": (e.company or "").strip() or None,
                 "start": start.isoformat() if start else None,
                 "end": end.isoformat() if end else None,
                 "is_current": bool(e.end and e.end.strip().lower() in {"present", "current", "now", "ongoing", "to date", "till date"}),
@@ -109,12 +120,12 @@ def build_profile(
     education: list[dict[str, Any]] = []
     for ed in ex.education:
         verified = _in_text(ed.snippet, haystack, 6) or _in_text(ed.institution, haystack)
-        if not verified:
+        if not verified or not (ed.institution or ed.degree):
             dropped += 1
             continue
         education.append(
             {
-                "institution": ed.institution.strip(),
+                "institution": (ed.institution or "").strip() or None,
                 "degree": (ed.degree or "").strip() or None,
                 "field": (ed.field or "").strip() or None,
                 "start": ed.start,
@@ -123,18 +134,13 @@ def build_profile(
             }
         )
 
-    # --- nationality: only if the CV states it explicitly ---
+    # --- nationality: code only, and only from an explicit "Nationality: X" / "Citizenship: X" line ---
     nationality = None
     nationality_snippet = None
-    if (
-        ex.nationality
-        and ex.nationality_snippet
-        and _in_text(ex.nationality_snippet, haystack, 6)
-        and NATIONALITY_CUE.search(ex.nationality_snippet)
-        and squash(ex.nationality) in squash(ex.nationality_snippet)
-    ):
-        nationality = ex.nationality.strip()
-        nationality_snippet = ex.nationality_snippet.strip()
+    m = NATIONALITY_LINE.search(text)
+    if m:
+        nationality = m.group("value").strip().title()
+        nationality_snippet = m.group(0).strip()
 
     # --- skills, certs, qualifications: must appear in the CV, then canonicalised ---
     skills = dedupe_keep_order([canon_skill(s) for s in ex.skills if _in_text(s, haystack, 2)])
@@ -150,8 +156,10 @@ def build_profile(
     # --- derived ---
     years = years_of_experience(ranges) if ranges else None
     industry_years = {k: years_of_experience(v) for k, v in industry_ranges.items()}
-    current = next((x for x in experience if x["is_current"]), experience[0] if experience else None)
-    titles = dedupe_keep_order([x["title"].lower() for x in experience])
+    current = next((x for x in experience if x["is_current"] and x["title"]), None) or next(
+        (x for x in experience if x["title"]), None
+    )
+    titles = dedupe_keep_order([x["title"].lower() for x in experience if x["title"]])
     education_text = "; ".join(
         " ".join(filter(None, [d["degree"], d["field"], d["institution"]])) for d in education
     ) or None
@@ -170,7 +178,7 @@ def build_profile(
         "emails": emails,
         "phones": phones,
         "location": (ex.location or "").strip() or None,
-        "summary": (ex.summary or "").strip() or None,
+        "summary": None,
         "nationality": nationality,
         "nationality_snippet": nationality_snippet,
         "experience": experience,

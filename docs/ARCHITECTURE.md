@@ -75,20 +75,20 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 
 | Req | Answer | Status |
 |-----|--------|--------|
-| 1.1-1.3 | Postgres store, automatic ingest of CVS_DIR, one profile per person | |
-| 1.4 | Profile page: contact, experience, education, skills, quals, certs, applications, years | |
-| 1.5 | Versioned profiles, latest CV current | |
-| 2.1 | PDF + Word parsing, OCR fallback | |
-| 2.2 | Postgres full text (tsvector) + semantic search (pgvector) over CV content | |
-| 2.3 | Filters: name, skills, years, education, quals, certs, industry, titles, nationality (when stated) | |
-| 2.4 | Results table/cards with highlights and counts | |
+| 1.1-1.3 | Postgres store, automatic ingest of CVS_DIR, one profile per person | Built (Phase 1). Timed on 20 real CVs; full-folder ingest still to run |
+| 1.4 | Profile page: contact, experience, education, skills, quals, certs, applications, years | Built, except Applications tab (empty until Phase 2) |
+| 1.5 | Versioned profiles, latest CV current | Built: new version per CV, current pointer follows the latest file date |
+| 2.1 | PDF + Word parsing, OCR fallback | Built. Legacy .doc goes to review with a reason. OCR is English only |
+| 2.2 | Postgres full text (tsvector) + semantic search (pgvector) over CV content | Built (keyword + meaning, merged by reciprocal rank). Semantic distance cut-off not yet tuned on the full folder |
+| 2.3 | Filters: name, skills, years, education, quals, certs, industry, titles, nationality (when stated) | Built |
+| 2.4 | Results table/cards with highlights and counts | Built (table on desktop, cards on phone) |
 | 3.1-3.4 | Workflow B steps 5-8 | |
 | 3.5 | Approval gate before sharing | |
-| 4.1-4.5 | Section 4 | |
+| 4.1-4.5 | Section 4 | 4.1-4.3, 4.5 built (auto-link, possible-match review item with Adjudicator suggestion). 4.4 merge and undo: Phase 3 |
 | 5.1-5.7 | Request model, owner, shortlist and shared tables | |
 | 5.8 | Quarterly report, Excel export | |
 | 5.9-5.12 | Notes, attachments, next steps, timeline | |
-| 6.1-6.4 | Add-candidate form with source; same dedup path | |
+| 6.1-6.4 | Add-candidate form with source; same dedup path | Built (form, optional CV, duplicate warning, source shown on profile) |
 | 7.1 | Private by default, role-based access, nothing leaves the machine | |
 | 7.2 | Export all data (CSV/JSON + original files) | |
 | 7.3 | Login + roles; on AWS: Entra ID SSO | |
@@ -109,6 +109,12 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 - Login rate limiting is in-memory (5 failures per email, 20 per IP, per 10 minutes), fine for one api process. On AWS it moves to a shared store.
 - Tests run against a throw-away database (`hub_test`, `hub_test_migrations`), created and dropped by the test run. Helpers refuse any other database name, so a migration downgrade can never touch dev data.
 - The seed only creates demo accounts whose SEED_*_PASSWORD is set, and never overwrites an existing user.
+- The extractor asks the model for name, experience, education, skills, certificates, qualifications and location only. Measured on 20 real CVs: adding nationality and summary fields made qwen2.5:7b return no experience for 9 of 20; without them it found experience for 20 of 20. Nationality is read by code only from an explicit "Nationality:" or "Citizenship:" line.
+- Field order in the extractor schema matters (name, then experience). With experience first, names were missed.
+- Snippets from the 7B model are often paraphrased, so a quote is not required for an experience entry. The employer (or title plus start year) must appear in the CV text, otherwise the entry is dropped and flagged.
+- Phones: Bahrain is tried first, then other likely regions, and a number is accepted only if valid in that region. Numbers without a country code from unlisted countries are not stored.
+- Applied date for a CV is the file modified time. Two CVs for the same person: the later file becomes current; an older file arriving later is stored but does not replace it.
+- Model calls are limited to 2 at a time (`LLM_MAX_CONCURRENT`) so queued work does not count against the model timeout. A timed-out call does not stop Ollama generating, so retrying too fast makes things slower.
 - (add more as decisions are made)
 
 ## 8. Defence checklist

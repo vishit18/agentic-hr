@@ -1,0 +1,58 @@
+{% extends "shell.html" %}
+{% block title %}Candidates · Cadence HR Hub{% endblock %}
+{% block shell_class %}wide{% endblock %}
+
+{% block list_pane %}
+<div class="pane-head">
+  <h1 class="pane-title">Candidates</h1>
+  <div class="actions">
+    <a class="btn" href="/candidates/new">Add candidate</a>
+    <form method="post" action="/candidates/upload" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="btn btn-primary">Upload CV
+        <input type="file" name="cv" accept=".pdf,.docx,.png,.jpg,.jpeg" hidden onchange="this.form.submit()">
+      </label>
+    </form>
+  </div>
+</div>
+
+{% if uploaded %}<p class="notice" role="status">Uploaded. The hub is reading the CV now; the candidate will appear here within a minute.</p>{% endif %}
+{% if upload_error %}<p class="form-error" role="alert">{{ upload_error }}</p>{% endif %}
+
+<form id="filters" class="filters" method="get" action="/candidates"
+      hx-get="/candidates" hx-target="#results" hx-push-url="true" hx-indicator="#busy"
+      hx-trigger="input delay:400ms, change, submit">
+  <input class="search-big" type="search" name="q" value="{{ f.q }}" placeholder="Search inside every CV, e.g. 'CFA banking' or 'accountant in manufacturing'" aria-label="Search CVs">
+  <details class="filter-more" {{ 'open' if (f.name or f.skills or f.certs or f.min_years is not none or f.max_years is not none or f.education or f.qualification or f.industry or f.title or f.nationality or f.source) else '' }}>
+    <summary>Filters</summary>
+    <div class="filter-grid">
+      <label class="field"><span>Name</span><input name="name" value="{{ f.name }}"></label>
+      <label class="field"><span>Skills</span><input name="skills" value="{{ f.skills|join(', ') }}" placeholder="excel, python"></label>
+      <label class="field"><span>Certificates</span><input name="certs" value="{{ f.certs|join(', ') }}" placeholder="CFA, PMP"></label>
+      <label class="field"><span>Years of experience (min)</span><input name="min_years" inputmode="decimal" value="{{ f.min_years if f.min_years is not none else '' }}"></label>
+      <label class="field"><span>Years of experience (max)</span><input name="max_years" inputmode="decimal" value="{{ f.max_years if f.max_years is not none else '' }}"></label>
+      <label class="field"><span>Education</span><input name="education" value="{{ f.education }}" placeholder="MBA, University of ..."></label>
+      <label class="field"><span>Qualifications</span><input name="qualification" value="{{ f.qualification }}"></label>
+      <label class="field"><span>Industry experience</span><input name="industry" value="{{ f.industry }}" placeholder="banking"></label>
+      <label class="field"><span>Current or previous title</span><input name="title" value="{{ f.title }}"></label>
+      {% if nationality_available %}
+      <label class="field"><span>Nationality (only where the CV states it)</span><input name="nationality" value="{{ f.nationality }}"></label>
+      {% endif %}
+      <label class="field"><span>Source</span>
+        <select name="source">
+          <option value="">Any</option>
+          {% for s in sources %}<option value="{{ s }}" {{ 'selected' if f.source == s else '' }}>{{ s }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    <a class="small" href="/candidates">Clear all filters</a>
+  </details>
+  <span id="busy" class="htmx-indicator muted small">Searching…</span>
+</form>
+
+<div id="results" aria-live="polite">
+  {% include "candidates/_results.html" %}
+</div>
+{% endblock %}
+
+{% block detail_pane %}{% endblock %}
