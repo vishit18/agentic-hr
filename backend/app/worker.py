@@ -20,7 +20,7 @@ from app.config import settings
 from app.core import queue
 from app.core.audit import audit
 from app.core.db import SessionLocal
-from app.workflows import cv_embed, cv_intake, hiring_request  # noqa: F401 - importing registers the job handlers
+from app.workflows import cv_embed, cv_intake, hiring_request, retention, tickets  # noqa: F401 - importing registers the job handlers
 
 log = logging.getLogger("worker")
 _stop_event = threading.Event()
@@ -153,6 +153,7 @@ def main() -> None:
         try:
             with SessionLocal() as session:
                 queued = cv_intake.scan_folders(session, seen)
+                retention.maybe_schedule(session)
         except Exception:  # noqa: BLE001 - e.g. database briefly unavailable; try again next poll
             log.exception("Folder scan failed")
             queued = 0

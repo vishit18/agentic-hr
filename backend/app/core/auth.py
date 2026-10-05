@@ -103,3 +103,12 @@ def require_role(*roles: str) -> Callable[..., User]:
         return user
 
     return dependency
+
+
+STAFF_ROLES = ("recruiter", "hr_admin")
+require_staff = require_role(*STAFF_ROLES)
+
+
+def home_path(user: User) -> str:
+    """Where a user lands after login. Engineers only ever see tickets."""
+    return "/tickets" if user.role == "engineer" else "/needs-you"

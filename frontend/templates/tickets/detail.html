@@ -1,0 +1,60 @@
+{% extends "shell.html" %}
+{% block title %}Ticket #{{ t.id }} · Cadence HR Hub{% endblock %}
+{% block shell_class %}detail-only{% endblock %}
+{% block list_pane %}{% endblock %}
+{% set label, cls = labels[t.status] %}
+
+{% block detail_pane %}
+<a class="back-inline" href="/tickets">&larr; Tickets</a>
+<h1>#{{ t.id }} {{ t.summary or 'Problem report' }}</h1>
+<div class="badges"><span class="pill {{ cls }}">{{ label }}</span></div>
+{% if saved %}<p class="notice" role="status">Saved. The reporter can see your note.</p>{% endif %}
+
+<section>
+  <h2>What the HR user wrote</h2>
+  <blockquote class="plain">{{ t.message }}</blockquote>
+  <p class="small muted">Reported by {{ reporter.name if reporter else 'someone' }} · <time title="{{ t.created_at|absdate }}">{{ t.created_at|reltime }}</time>
+    {% if t.page_url %} · page: <code>{{ t.page_url }}</code>{% endif %}</p>
+  {% if t.record_refs %}<p class="small">Records: {% for k, v in t.record_refs.items() %}{{ k|replace('_', ' ') }} {{ v }}{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+</section>
+
+<section>
+  <h2>Status and fix note</h2>
+  <form method="post" action="/tickets/{{ t.id }}" class="stack form-narrow">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="field"><span>Status</span>
+      <select name="status">{% for key, (l, c) in labels.items() %}<option value="{{ key }}" {{ 'selected' if t.status == key else '' }}>{{ l }}</option>{% endfor %}</select></label>
+    <label class="field"><span>Fix note (visible to the reporter)</span><textarea name="fix_note" rows="3" maxlength="2000">{{ t.fix_note or '' }}</textarea></label>
+    <button type="submit" class="btn-primary">Save</button>
+  </form>
+</section>
+
+<section>
+  <h2>Logs attached to this ticket</h2>
+  <p class="small muted">Recent actions on the records the reporter was looking at. Email addresses and phone numbers are masked. Opening an agent's raw input is logged.</p>
+  {% if logs.get('audit') %}
+  <ol class="log-list">
+    {% for r in logs.audit %}
+    <li>
+      <div><strong>{{ r.action }}</strong> <span class="muted small">{{ r.actor }} · {{ r.ts[:19]|replace('T', ' ') }}{% if r.entity_type %} · {{ r.entity_type }} {{ r.entity_id }}{% endif %}</span></div>
+      {% if r.model %}<div class="small muted">model {{ r.model }} · prompt {{ r.prompt_version }} · {{ r.latency_ms }} ms</div>{% endif %}
+      {% if r.input_hash %}<div class="small muted">input hash {{ r.input_hash[:16] }}…</div>{% endif %}
+      {% if r.output %}<details class="source"><summary>Output</summary><pre class="mail-preview">{{ r.output|tojson(indent=2) }}</pre></details>{% endif %}
+      {% if r.action.startswith('agent.') %}
+      <details class="source" hx-get="/tickets/{{ t.id }}/input/{{ r.id }}" hx-trigger="toggle once" hx-target="find .input-slot" hx-swap="innerHTML">
+        <summary>Raw input (logged)</summary><div class="input-slot small muted">Loading…</div>
+      </details>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}<p class="muted">No log rows matched the page the reporter was on.</p>{% endif %}
+
+  {% if logs.get('jobs') %}
+  <h3>Recent background tasks</h3>
+  <table class="mini"><tbody>
+    {% for j in logs.jobs %}<tr><td>#{{ j.id }}</td><td>{{ j.type }}</td><td>{{ j.status }}</td><td>{{ j.attempts }} tries</td><td class="small muted">{{ j.last_error or '' }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,22 +1,45 @@
 {% extends "shell.html" %}
 {% block title %}Needs you · Cadence HR Hub{% endblock %}
+{% block shell_class %}{{ 'detail-open' if selected else '' }}{% endblock %}
+
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endmacro %}
+
+{% macro compare_table(rows, left_title, right_title) %}
+<table class="compare">
+  <thead><tr><th></th><th>{{ left_title }}</th><th>{{ right_title }}</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr class="{{ r.state }}">
+    <th scope="row">{{ r.label }}{% if r.state == 'same' %}<span class="pill pill-ok">match</span>{% elif r.state == 'conflict' %}<span class="pill pill-warn">differs</span>{% endif %}</th>
+    <td>{% for x in r.left %}<div>{{ x }}</div>{% else %}<span class="muted">none</span>{% endfor %}</td>
+    <td>{% for x in r.right %}<div>{{ x }}</div>{% else %}<span class="muted">none</span>{% endfor %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
 
 {% block list_pane %}
-<h1 class="pane-title">Needs you</h1>
-{% if items %}
-<ul class="rows">
-  {% for item in items %}
-  {% set label, cls = type_labels.get(item.type, (item.type, 'pill-info')) %}
-  <li class="row">
-    <span class="pill {{ cls }}">{{ label }}</span>
-    <div class="row-main">
-      <div>{{ item.summary }}</div>
-      {% if item.reason %}<div class="muted small">{{ item.reason }}</div>{% endif %}
-    </div>
-    <time class="muted small" datetime="{{ item.created_at.isoformat() }}" title="{{ item.created_at.strftime('%d %b %Y %H:%M') }}">{{ item.created_at.strftime('%d %b') }}</time>
-  </li>
+<h1 class="pane-title">Needs you {% if total %}<span class="badge">{{ total }}</span>{% endif %}</h1>
+{% if groups %}
+  {% for t, rows in groups %}
+  <h2 class="group-title">{{ group_titles[t] }}</h2>
+  <ul class="rows">
+    {% for item in rows %}
+    {% set label, cls = type_labels.get(item.type, (item.type, 'pill-info')) %}
+    <li>
+      <a class="row row-link {{ 'selected' if selected and selected.id == item.id else '' }}" href="/needs-you/{{ item.id }}">
+        <span class="pill {{ cls }}">{{ label }}</span>
+        <div class="row-main">
+          <div>{{ item.summary }}</div>
+          <div class="muted small">{{ owners.get(item.owner_id, 'Unassigned') if item.owner_id else 'Anyone' }}</div>
+        </div>
+        <time class="muted small" datetime="{{ item.created_at.isoformat() }}" title="{{ item.created_at|absdate }}">{{ item.created_at|reltime }}</time>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
   {% endfor %}
-</ul>
 {% else %}
 <div class="empty">
   <p><strong>Nothing needs you right now.</strong></p>
@@ -26,7 +49,79 @@
 {% endblock %}
 
 {% block detail_pane %}
-<div class="empty">
-  <p class="muted">Select an item to see what happened and what you can do.</p>
-</div>
+{% if not selected %}
+<div class="empty"><p class="muted">Select an item to see what happened and what you can do.</p></div>
+{% else %}
+{% set label, cls = type_labels.get(selected.type, (selected.type, 'pill-info')) %}
+<a class="back-inline back-mobile" href="/needs-you">&larr; Needs you</a>
+<span class="pill {{ cls }}">{{ label }}</span>
+<h1>{{ selected.summary }}</h1>
+{% if error %}<p class="form-error" role="alert">{{ error|replace('+', ' ') }}</p>{% endif %}
+{% if selected.status != 'open' %}<p class="notice">Already handled ({{ selected.resolution }}).</p>{% endif %}
+{% if selected.reason %}<p>{{ selected.reason }}</p>{% endif %}
+<p class="muted small">Raised <time title="{{ selected.created_at|absdate }}">{{ selected.created_at|reltime }}</time></p>
+
+{% if selected.type == 'possible_duplicate' %}
+  {% if merged_already %}<p class="notice">One of these profiles has already been merged, so there is nothing more to decide here.</p>{% endif %}
+  {% if evidence %}
+  <h2>Why the hub thinks they may be the same person</h2>
+  <ul>{% for e in evidence %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if suggestion %}
+  <div class="suggestion">
+    <strong>AI suggestion (only a suggestion): {{ suggestion.verdict|replace('same', 'Same person')|replace('different', 'Different people')|replace('unsure', 'Not sure') }}</strong>
+    <ul>{% for r in suggestion.reasons %}<li>{{ r }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  {% if existing and incoming %}
+  {{ compare_table(rows, 'Already in the database', 'New CV') }}
+  <p><a href="/candidates/{{ existing.id }}" target="_blank" rel="noopener">Open the existing profile</a> ·
+     <a href="/candidates/{{ incoming.id }}" target="_blank" rel="noopener">Open the new one</a></p>
+  {% if others %}<p class="small muted">This CV also matched {{ others|length }} other profile{{ '' if others|length == 1 else 's' }}.</p>{% endif %}
+  {% if selected.status == 'open' and not merged_already %}
+  <div class="actions">
+    <a class="btn btn-primary" href="/merge?keep={{ existing.id }}&drop={{ incoming.id }}&item={{ selected.id }}">Same person (merge)</a>
+    <form method="post" action="/needs-you/{{ selected.id }}/resolve">{{ csrf() }}<input type="hidden" name="resolution" value="different_people"><button type="submit">Different people</button></form>
+    <a class="btn" href="/needs-you">Not sure, leave it</a>
+  </div>
+  {% endif %}
+  {% else %}<p class="muted">The profiles for this item are no longer available.</p>{% endif %}
+
+{% elif selected.type == 'shortlist_ready' %}
+  <div class="actions"><a class="btn btn-primary" href="/requests/{{ selected.entity_id }}">Review the shortlist</a></div>
+
+{% elif selected.type == 'request_needs_info' %}
+  {% if selected.payload.get('draft_question') %}
+  <p class="small">Suggested message to the company (nothing has been sent):</p>
+  <textarea readonly rows="8" onclick="this.select()">{{ selected.payload.draft_question }}</textarea>
+  {% endif %}
+  <div class="actions"><a class="btn btn-primary" href="/requests/{{ selected.entity_id }}">Open the request</a></div>
+
+{% elif selected.type in ('low_confidence', 'incomplete_extraction') %}
+  {% if selected.type == 'incomplete_extraction' %}
+  <p>This CV is longer than the AI can read in one go. It read the first {{ selected.payload.get('read_chars') }} of {{ selected.payload.get('total_chars') }} characters, so jobs or qualifications near the end may be missing. Compare the profile with the original CV.</p>
+  {% endif %}
+  <div class="actions">
+    {% if candidate %}<a class="btn btn-primary" href="/candidates/{{ candidate.id }}" target="_blank" rel="noopener">Open the profile</a>{% endif %}
+    {% if version and version.file_id %}<a class="btn" href="/files/{{ version.file_id }}/original">Download the CV</a>{% endif %}
+    {% if selected.status == 'open' %}<form method="post" action="/needs-you/{{ selected.id }}/resolve">{{ csrf() }}<input type="hidden" name="resolution" value="checked_ok"><button type="submit">I checked it, it is fine</button></form>{% endif %}
+  </div>
+
+{% elif selected.type == 'file_unreadable' %}
+  <p>Nothing was added to the database for this file. Fix it (for example save it as a PDF) and put it in the inbox again, or mark it as handled.</p>
+  <div class="actions">
+    {% if file %}<a class="btn" href="/files/{{ file.id }}/original">Download the file</a>{% endif %}
+    {% if selected.status == 'open' %}<form method="post" action="/needs-you/{{ selected.id }}/resolve">{{ csrf() }}<input type="hidden" name="resolution" value="handled"><button type="submit" class="btn-primary">Mark as handled</button></form>{% endif %}
+  </div>
+
+{% elif selected.type == 'job_failed' %}
+  <p>A background task failed several times. You can try it again or dismiss it.{% if job %} Task: {{ job.type }}, tried {{ job.attempts }} times.{% endif %}</p>
+  {% if selected.status == 'open' %}
+  <div class="actions">
+    <form method="post" action="/needs-you/{{ selected.id }}/retry">{{ csrf() }}<button type="submit" class="btn-primary">Try again</button></form>
+    <form method="post" action="/needs-you/{{ selected.id }}/resolve">{{ csrf() }}<input type="hidden" name="resolution" value="dismissed"><button type="submit">Dismiss</button></form>
+  </div>
+  {% endif %}
+{% endif %}
+{% endif %}
 {% endblock %}

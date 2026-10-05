@@ -1,0 +1,33 @@
+{% extends "shell.html" %}
+{% block title %}Merge profiles · Cadence HR Hub{% endblock %}
+{% block shell_class %}detail-only{% endblock %}
+{% block list_pane %}{% endblock %}
+
+{% block detail_pane %}
+<a class="back-inline" href="{{ '/needs-you/%d'|format(item_id) if item_id else '/candidates/%d'|format(keep.id) }}">&larr; Back</a>
+<h1>Merge these two profiles?</h1>
+<p>Only do this if you are sure they are the same person. Merging two different people does more harm than leaving a duplicate.</p>
+{% if error %}<p class="form-error" role="alert">{{ error|replace('+', ' ') }}</p>{% endif %}
+
+<table class="compare">
+  <thead><tr><th></th><th>Kept: {{ keep_v.full_name if keep_v else 'Profile ' ~ keep.id }}</th><th>Merged in: {{ drop_v.full_name if drop_v else 'Profile ' ~ drop.id }}</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr class="{{ r.state }}">
+    <th scope="row">{{ r.label }}{% if r.state == 'same' %}<span class="pill pill-ok">match</span>{% elif r.state == 'conflict' %}<span class="pill pill-warn">differs</span>{% endif %}</th>
+    <td>{% for x in r.left %}<div>{{ x }}</div>{% else %}<span class="muted">none</span>{% endfor %}</td>
+    <td>{% for x in r.right %}<div>{{ x }}</div>{% else %}<span class="muted">none</span>{% endfor %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="small muted">What happens: all CVs and contact details from the second profile move onto the first, with their history. The newest CV becomes the current one. You can undo it from the profile's Activity tab.</p>
+
+<form method="post" action="/merge" class="actions">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="keep" value="{{ keep.id }}">
+  <input type="hidden" name="drop" value="{{ drop.id }}">
+  <button type="submit" class="btn-primary">Yes, merge them</button>
+  <a class="btn" href="{{ '/needs-you/%d'|format(item_id) if item_id else '/candidates/%d'|format(keep.id) }}">Cancel</a>
+</form>
+{% endblock %}

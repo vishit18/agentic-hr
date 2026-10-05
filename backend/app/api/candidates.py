@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.audit import audit
-from app.core.auth import get_current_user
+from app.core.auth import require_staff
 from app.core.db import get_db
 from app.core.uploads import save_upload as save_upload_to
 from app.core.models import AuditLog, Candidate, CandidateVersion, File, User
@@ -55,7 +55,7 @@ def _sources(db: Session) -> list[str]:
 
 
 @router.get("/candidates")
-def candidates_list(request: Request, page: int = 1, user: User = Depends(get_current_user),
+def candidates_list(request: Request, page: int = 1, user: User = Depends(require_staff),
                     db: Session = Depends(get_db)) -> Response:
     filters = parse_filters(request)
     result = search(db, filters, page)
@@ -90,7 +90,7 @@ def queue_upload(db: Session, user: User, path: Path, sha: str, hints: dict | No
 
 
 @router.post("/candidates/upload")
-async def upload_cv(request: Request, cv: UploadFile = FormFile(...), user: User = Depends(get_current_user),
+async def upload_cv(request: Request, cv: UploadFile = FormFile(...), user: User = Depends(require_staff),
                     db: Session = Depends(get_db)) -> Response:
     saved = await save_upload(cv)
     if isinstance(saved, str):
@@ -111,7 +111,7 @@ def _form_ctx(**extra: object) -> dict:
 
 
 @router.get("/candidates/new")
-def add_form(request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
+def add_form(request: Request, user: User = Depends(require_staff), db: Session = Depends(get_db)) -> Response:
     return render(request, "candidates/new.html", _form_ctx(), user=user, db=db, section="candidates")
 
 
@@ -121,7 +121,7 @@ async def add_submit(
     name: str = Form(""), email: str = Form(""), phone: str = Form(""), location: str = Form(""),
     source: str = Form("LinkedIn"), source_detail: str = Form(""), confirm: str = Form(""),
     cv: UploadFile | None = FormFile(None),
-    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+    user: User = Depends(require_staff), db: Session = Depends(get_db),
 ) -> Response:
     values = {"name": name, "email": email, "phone": phone, "location": location,
               "source": source, "source_detail": source_detail}
@@ -170,7 +170,7 @@ async def add_submit(
 # ---------------------------------------------------------------- profile
 
 @router.get("/candidates/{candidate_id:int}")
-def profile(candidate_id: int, request: Request, tab: str = "overview", user: User = Depends(get_current_user),
+def profile(candidate_id: int, request: Request, tab: str = "overview", user: User = Depends(require_staff),
             db: Session = Depends(get_db)) -> Response:
     candidate = db.get(Candidate, candidate_id)
     if candidate is None:
@@ -196,16 +196,23 @@ def profile(candidate_id: int, request: Request, tab: str = "overview", user: Us
                 (AuditLog.entity_type == "candidate_version") & (AuditLog.entity_id.in_(version_ids or [-1])),
             )).order_by(AuditLog.ts.desc()).limit(100)
         ).all()
+    from app.workflows.merge import already_undone
+
+    undoable = {a.id for a in activity if a.action in ("candidate.merged", "candidate.version_unlinked")
+                and not already_undone(db, a.id)}
+    qp = request.query_params
     return render(
         request, "candidates/profile.html",
         {"c": candidate, "v": current, "d": (current.data if current else {}) or {}, "versions": versions,
-         "files": files, "tab": tab, "tabs": TABS, "activity": activity},
+         "files": files, "tab": tab, "tabs": TABS, "activity": activity, "undoable": undoable,
+         "flash": {"merged": qp.get("merged"), "undone": qp.get("undone"), "unlinked": qp.get("unlinked"),
+                   "error": (qp.get("error") or "").replace("+", " ")}},
         user=user, db=db, section="candidates",
     )
 
 
 @router.get("/files/{file_id:int}/original")
-def original_file(file_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
+def original_file(file_id: int, user: User = Depends(require_staff), db: Session = Depends(get_db)) -> Response:
     """Originals are only served as attachments, never inline, and never from a raw path in the URL."""
     file = db.get(File, file_id)
     if file is None or not Path(file.stored_path).is_file():

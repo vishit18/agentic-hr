@@ -1,0 +1,18 @@
+{% extends "shell.html" %}
+{% block title %}{{ label }} · Cadence HR Hub{% endblock %}
+{% block shell_class %}detail-only{% endblock %}
+{% block list_pane %}{% endblock %}
+
+{% block detail_pane %}
+<a class="back-inline" href="/activity?tab=agents">&larr; Agents working now</a>
+<h1>{{ label }}</h1>
+{% if item %}<p>{{ item }}</p>{% endif %}
+<p class="muted small">Status: {{ {'running': 'working', 'queued': 'waiting', 'dead': 'failed', 'done': 'done'}[job.status] }} · tried {{ job.attempts }} time{{ '' if job.attempts == 1 else 's' }}</p>
+{% if job.last_error and job.status != 'done' %}<p class="form-error">This task ran into a problem. Engineering can see the details if you flag it.</p>{% endif %}
+<h2>What happened, step by step</h2>
+{% if steps %}
+<ol class="timeline">
+  {% for s in steps %}<li>{{ action_label(s.action) }}<div class="muted small">{{ s.ts|absdate }}{% if s.latency_ms %} · {{ s.latency_ms }} ms{% endif %}{% if s.model %} · AI model {{ s.model }}{% endif %}</div></li>{% endfor %}
+</ol>
+{% else %}<p class="muted">No steps recorded yet.</p>{% endif %}
+{% endblock %}

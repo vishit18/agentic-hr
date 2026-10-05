@@ -247,6 +247,9 @@ def process_request(session: Session, job: Job) -> None:
     if req is None or req.status not in ("new", "needs_info"):
         return
     text, n_attach, notes = source_text(session, req)
+    if len(text) > settings.llm_max_cv_chars:
+        notes.append(f"This request is long: the AI read the first {settings.llm_max_cv_chars} of {len(text)} "
+                     "characters, so check that no requirement is missing")
     parse_requirements(session, req, text, job.id)
     if notes:
         req.data = {**(req.data or {}), "attachment_notes": notes}

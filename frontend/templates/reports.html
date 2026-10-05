@@ -1,0 +1,52 @@
+{% extends "shell.html" %}
+{% block title %}Reports · Cadence HR Hub{% endblock %}
+{% block shell_class %}wide{% endblock %}
+
+{% block list_pane %}
+<div class="pane-head">
+  <h1 class="pane-title">Reports</h1>
+  <div class="actions">
+    <a class="btn btn-primary" href="/reports/export.xlsx?year={{ r.year }}&quarter={{ r.quarter }}">Export to Excel</a>
+    {% if user.role == 'hr_admin' %}<a class="btn" href="/exports/all" title="Every candidate, request and log, with the original files">Export all data</a>{% endif %}
+  </div>
+</div>
+
+<form method="get" action="/reports" class="filters quarter-picker">
+  <label class="field"><span>Year</span>
+    <select name="year" onchange="this.form.submit()">{% for y in years %}<option value="{{ y }}" {{ 'selected' if y == r.year else '' }}>{{ y }}</option>{% endfor %}</select></label>
+  <label class="field"><span>Quarter</span>
+    <select name="quarter" onchange="this.form.submit()">{% for n in (1, 2, 3, 4) %}<option value="{{ n }}" {{ 'selected' if n == r.quarter else '' }}>Q{{ n }}</option>{% endfor %}</select></label>
+  <noscript><button type="submit">Show</button></noscript>
+</form>
+<p class="muted small">{{ r.start.strftime('%d %b %Y') }} to {{ (r.end - (r.end - r.start) / 1000).strftime('%d %b %Y') }}</p>
+
+{% if r.received == 0 %}
+<div class="empty"><p><strong>No requests in Q{{ r.quarter }} {{ r.year }}.</strong></p>
+<p class="muted">When companies send requests, this page counts them: how many are open, how many were shared, and how fast the shortlists were ready.</p></div>
+{% else %}
+<div class="tiles">
+  <div class="tile"><div class="tile-n">{{ r.received }}</div><div class="muted small">Requests received</div></div>
+  <div class="tile"><div class="tile-n">{{ r.open }}</div><div class="muted small">Still open</div></div>
+  <div class="tile"><div class="tile-n">{{ r.shared_requests }}</div><div class="muted small">Shared with the company</div></div>
+  <div class="tile"><div class="tile-n">{{ r.closed }}</div><div class="muted small">Closed</div></div>
+  <div class="tile"><div class="tile-n">{{ r.shortlisted }}</div><div class="muted small">Candidates shortlisted</div></div>
+  <div class="tile"><div class="tile-n">{{ r.shared }}</div><div class="muted small">Candidates shared</div></div>
+  <div class="tile"><div class="tile-n">{{ r.median_hours_to_shortlist if r.median_hours_to_shortlist is not none else '–' }}</div><div class="muted small">Median hours to shortlist</div></div>
+</div>
+
+<div class="two-col">
+  <section><h2>By company</h2>
+    <table class="mini"><tbody>{% for name, n in r.by_company %}<tr><td>{{ name }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody></table></section>
+  <section><h2>By owner</h2>
+    <table class="mini"><tbody>{% for name, n in r.by_owner %}<tr><td>{{ name }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody></table></section>
+</div>
+
+<h2>Requests</h2>
+<table class="results-table">
+  <thead><tr><th>Reference</th><th>Company</th><th>Role</th><th>Received</th><th>Owner</th><th>Status</th><th>Shortlisted</th><th>Shared</th></tr></thead>
+  <tbody>{% for x in r.requests %}<tr><td>{{ x.reference }}</td><td>{{ x.company }}</td><td>{{ x.job_title or '' }}</td><td><time title="{{ x.received|absdate }}">{{ x.received|reltime }}</time></td><td>{{ x.owner }}</td><td>{{ x.status|replace('_', ' ') }}</td><td>{{ x.shortlisted }}</td><td>{{ x.shared }}</td></tr>{% endfor %}</tbody>
+</table>
+<ul class="cards">{% for x in r.requests %}<li class="card-row"><strong>{{ x.job_title or x.reference }}</strong><div>{{ x.company }} · {{ x.status|replace('_', ' ') }}</div><div class="small muted">{{ x.owner }} · {{ x.shortlisted }} shortlisted · {{ x.shared }} shared</div></li>{% endfor %}</ul>
+{% endif %}
+{% endblock %}
+{% block detail_pane %}{% endblock %}

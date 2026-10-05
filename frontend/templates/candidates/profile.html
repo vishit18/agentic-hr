@@ -11,10 +11,16 @@
 {% block detail_pane %}
 <a class="back-inline" href="/candidates">&larr; Candidates</a>
 
+{% if flash.merged %}<p class="notice" role="status">Merged. Their CVs and details are now on this profile. You can undo this below, in the Activity tab.</p>{% endif %}
+{% if flash.undone %}<p class="notice" role="status">Undone. Everything is back as it was.</p>{% endif %}
+{% if flash.unlinked %}<p class="notice" role="status">That CV is now its own profile. You can undo this from the Activity tab of the original profile.</p>{% endif %}
+{% if flash.error %}<p class="form-error" role="alert">{{ flash.error }}</p>{% endif %}
+
 <header class="profile-head">
   <h1>{{ v.full_name if v and v.full_name else 'Name not found' }}</h1>
   <div class="badges">
     {% if v and v.auto_linked %}<span class="pill pill-info" title="This CV was linked to an existing profile because the email or phone matched">Auto-linked</span>{% endif %}
+    {% if v and v.extraction_status == 'incomplete' %}<span class="pill pill-warn" title="This CV is longer than the AI can read at once">Possibly incomplete</span>{% endif %}
     {% if v and v.extraction_status == 'ai_pending' %}<span class="pill pill-warn">AI pending: details are partial</span>{% endif %}
     {% if c.source %}<span class="pill pill-info">Source: {{ c.source }}</span>{% endif %}
   </div>
@@ -91,6 +97,10 @@
         </div>
       </div>
       {% if f %}<a class="btn" href="/files/{{ f.id }}/original">Download original</a>{% endif %}
+      {% if ver.auto_linked %}
+      <form method="post" action="/candidates/{{ c.id }}/versions/{{ ver.id }}/unlink" onsubmit="return confirm('This CV will become its own profile. You can undo it from the Activity tab. Continue?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">Not the same person: unlink</button></form>
+      {% endif %}
     </li>
     {% endfor %}
   </ul>
@@ -103,8 +113,9 @@
   {% if activity %}
   <ul class="rows">
     {% for a in activity %}
-    <li class="row"><div class="row-main"><strong>{{ a.action }}</strong>
-      <div class="muted small">{{ a.actor_name or a.actor_type }} · <time title="{{ a.ts|absdate }}">{{ a.ts|reltime }}</time></div></div></li>
+    <li class="row"><div class="row-main"><strong>{{ a.action|actionlabel }}</strong>
+      <div class="muted small">{{ a.actor_name or a.actor_type }} · <time title="{{ a.ts|absdate }}">{{ a.ts|reltime }}</time></div></div>
+      {% if a.id in undoable %}<form method="post" action="/candidates/{{ c.id }}/undo/{{ a.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">Undo</button></form>{% endif %}</li>
     {% endfor %}
   </ul>
   {% else %}<p class="muted">No activity recorded yet.</p>{% endif %}

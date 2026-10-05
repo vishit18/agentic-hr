@@ -324,3 +324,14 @@ class Attachment(Base):
     filename: Mapped[str] = mapped_column(String(500))
     uploaded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = _now()
+
+
+class AppSetting(Base):
+    """Small key/value settings changed from the Settings page (for example the retention period)."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(Text)
+    updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

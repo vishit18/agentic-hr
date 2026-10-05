@@ -1,0 +1,77 @@
+{% extends "shell.html" %}
+{% block title %}Settings · Cadence HR Hub{% endblock %}
+{% block shell_class %}wide{% endblock %}
+
+{% block list_pane %}
+<h1 class="pane-title">Settings</h1>
+{% if saved %}<p class="notice" role="status">Saved.</p>{% endif %}
+{% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+
+<section>
+  <h2>How long CVs are kept</h2>
+  <p class="muted">A profile is removed once its newest CV is older than this many days. Profiles on the shortlist of an open request are never removed. Set 0 to keep everything.</p>
+  <p>Now: <strong>{{ (days ~ ' days') if days else 'kept until you set a period' }}</strong>{% if days and due_now is not none %} · {{ due_now }} profile{{ '' if due_now == 1 else 's' }} are past it right now and will be removed at the next daily clean-up{% endif %}</p>
+  {% if preview_count is defined %}
+  <div class="warn-box">
+    <h2>Check before you turn this on</h2>
+    <p>With {{ preview_days }} days, <strong>{{ preview_count }}</strong> profile{{ '' if preview_count == 1 else 's' }} would be removed at the next daily clean-up, with their CVs held by the hub. Originals in the read-only CV folder are not touched; clean those in SharePoint.</p>
+  </div>
+  {% endif %}
+  <form method="post" action="/settings/retention" class="stack form-narrow">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="field"><span>Days to keep a CV</span><input name="days" type="number" min="0" max="36500" value="{{ preview_days or days }}" inputmode="numeric"></label>
+    {% if preview_count is defined %}<label class="check"><input type="checkbox" name="confirm" value="1" required> I have checked the number above and want to apply this period</label>{% endif %}
+    <button type="submit" class="btn-primary">{{ 'Apply' if preview_count is defined else 'Preview what it would remove' }}</button>
+  </form>
+</section>
+
+<section>
+  <h2>People who can sign in</h2>
+  <table class="results-table">
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active</th><th></th></tr></thead>
+    <tbody>
+    {% for u in users %}
+    <tr>
+      <form method="post" action="/settings/users/{{ u.id }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <td>{{ u.name }}</td><td>{{ u.email }}</td>
+        <td><select name="role" aria-label="Role for {{ u.name }}">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if u.role == r else '' }}>{{ r|replace('_', ' ') }}</option>{% endfor %}</select></td>
+        <td><label class="check"><input type="checkbox" name="active" value="1" {{ 'checked' if u.is_active else '' }}> Active</label></td>
+        <td><button type="submit">Save</button></td>
+      </form>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <ul class="cards">
+    {% for u in users %}
+    <li class="card-row">
+      <form method="post" action="/settings/users/{{ u.id }}" class="stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <strong>{{ u.name }}</strong><div class="small muted">{{ u.email }}</div>
+        <select name="role" aria-label="Role for {{ u.name }}">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if u.role == r else '' }}>{{ r|replace('_', ' ') }}</option>{% endfor %}</select>
+        <label class="check"><input type="checkbox" name="active" value="1" {{ 'checked' if u.is_active else '' }}> Active</label>
+        <button type="submit">Save</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <h3>Add a person</h3>
+  <form method="post" action="/settings/users" class="stack form-narrow">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="field"><span>Name</span><input name="name" required></label>
+    <label class="field"><span>Email</span><input type="email" name="email" required></label>
+    <label class="field"><span>Role</span><select name="role">{% for r in roles %}<option value="{{ r }}">{{ r|replace('_', ' ') }}</option>{% endfor %}</select></label>
+    <label class="field"><span>Temporary password (at least 10 characters)</span><input type="password" name="password" minlength="10" required autocomplete="new-password"></label>
+    <button type="submit">Create account</button>
+  </form>
+</section>
+
+<section>
+  <h2>Backups and exports</h2>
+  <p>Download everything the hub holds (people, requests, logs and the original files): <a class="btn" href="/exports/all">Export all data</a></p>
+  <p class="muted small">Database backups are made with the backup script on the server (see the README).</p>
+</section>
+{% endblock %}
+{% block detail_pane %}{% endblock %}

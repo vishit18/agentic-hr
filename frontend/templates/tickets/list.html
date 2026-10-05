@@ -1,0 +1,30 @@
+{% extends "shell.html" %}
+{% block title %}Tickets · Cadence HR Hub{% endblock %}
+{% block shell_class %}wide{% endblock %}
+
+{% block list_pane %}
+<h1 class="pane-title">Tickets</h1>
+<nav class="tabs" aria-label="Filter">
+  <a class="tab-link {{ 'active' if not status else '' }}" href="/tickets">All</a>
+  <a class="tab-link {{ 'active' if status == 'open' else '' }}" href="/tickets?status=open">Open</a>
+  <a class="tab-link {{ 'active' if status == 'in_progress' else '' }}" href="/tickets?status=in_progress">In progress</a>
+  <a class="tab-link {{ 'active' if status == 'fixed' else '' }}" href="/tickets?status=fixed">Fixed</a>
+</nav>
+{% if rows %}
+<ul class="rows">
+  {% for t in rows %}
+  {% set label, cls = labels[t.status] %}
+  <li><a class="row row-link" href="/tickets/{{ t.id }}">
+    <span class="pill {{ cls }}">{{ label }}</span>
+    <div class="row-main"><div>#{{ t.id }} {{ t.summary or t.message[:120] }}</div>
+      <div class="muted small">Reported by {{ reporters.get(t.reporter_id, 'someone') }}{% if t.page_url %} on {{ t.page_url }}{% endif %}</div></div>
+    <time class="muted small" title="{{ t.created_at|absdate }}">{{ t.created_at|reltime }}</time>
+  </a></li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty"><p><strong>No tickets{{ ' with that status' if status else '' }}.</strong></p>
+<p class="muted">When someone flags a problem, it will appear here with the logs attached.</p></div>
+{% endif %}
+{% endblock %}
+{% block detail_pane %}{% endblock %}

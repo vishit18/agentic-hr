@@ -1,0 +1,22 @@
+{% extends "shell.html" %}
+{% block title %}Problems I reported · Cadence HR Hub{% endblock %}
+{% block shell_class %}wide{% endblock %}
+
+{% block list_pane %}
+<h1 class="pane-title">Problems I reported</h1>
+{% if rows %}
+<ul class="rows">
+  {% for t in rows %}
+  {% set label, cls = labels[t.status] %}
+  <li class="row"><span class="pill {{ cls }}">{{ label }}</span>
+    <div class="row-main"><div>{{ t.message[:200] }}</div>
+      {% if t.fix_note %}<div class="fix-note"><strong>Engineering says:</strong> {{ t.fix_note }}</div>{% endif %}
+      <div class="muted small"><time title="{{ t.created_at|absdate }}">{{ t.created_at|reltime }}</time></div></div></li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty"><p><strong>You have not reported any problems.</strong></p>
+<p class="muted">If something looks wrong, use "Flag a problem" at the top of any page. When engineering fixes it, their note appears here.</p></div>
+{% endif %}
+{% endblock %}
+{% block detail_pane %}{% endblock %}

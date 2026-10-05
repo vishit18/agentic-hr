@@ -4,18 +4,20 @@
 
 {% block header %}
 <header class="topbar app-topbar">
-  <a class="brand" href="/needs-you">Cadence HR Hub</a>
+  <a class="brand" href="/home">Cadence HR Hub</a>
 
+  {% if user.role != 'engineer' %}
   <form class="global-search" action="/candidates" method="get" role="search">
     <input type="search" name="q" placeholder="Search candidates" aria-label="Search candidates">
   </form>
 
-  <a class="agent-indicator {{ 'is-busy' if agents_running else '' }}" href="/activity" title="Agent activity">
+  <a class="agent-indicator {{ 'is-busy' if agents_running else '' }}" href="/activity?tab=agents" title="Agent activity">
     <span class="dot"></span>
     <span class="agent-text">{{ agents_running ~ ' working' if agents_running else 'Agents idle' }}</span>
   </a>
 
-  <button type="button" class="btn-flag" disabled title="Problem reporting arrives in Phase 3">Flag a problem</button>
+  <button type="button" class="btn-flag" onclick="document.getElementById('flag-page-url').value = location.pathname + location.search; document.getElementById('flag-dialog').showModal()">Flag a problem</button>
+  {% endif %}
 
   <details class="user-menu">
     <summary>{{ user.name }}</summary>
@@ -24,6 +26,8 @@
       {% for n in nav if not n.tab %}
       <a href="{{ n.href }}">{{ n.label }}</a>
       {% endfor %}
+      {% if user.role != 'engineer' %}<a href="/problems">Problems I reported</a>{% endif %}
+      <a href="/status">System status</a>
       <form method="post" action="/logout">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit">Sign out</button>
@@ -31,12 +35,15 @@
     </div>
   </details>
 </header>
+{% if ai_down and user.role != 'engineer' %}
+<div class="banner-warn" role="status">AI is unavailable, so the hub is using basic rules. Work continues and will be upgraded automatically when it is back.</div>
+{% endif %}
 {% endblock %}
 
 {% block main %}
 <div class="shell {% block shell_class %}{% endblock %}">
   <nav class="nav" aria-label="Main">
-    {% for n in nav %}
+    {% for n in nav if n.tab or user.role == 'engineer' %}
     <a href="{{ n.href }}" class="nav-item {{ 'active' if section == n.key else '' }}">
       <span>{{ n.label }}</span>
       {% if n.key == 'needs-you' and needs_you_count %}<span class="badge">{{ needs_you_count }}</span>{% endif %}
@@ -49,17 +56,35 @@
   </section>
 
   <section class="detail-pane" aria-label="Details">
-    <a class="back-link" href="{{ request.url.path }}">&larr; Back</a>
     {% block detail_pane %}{% endblock %}
   </section>
 </div>
 
 <nav class="tabbar" aria-label="Main (mobile)">
-  {% for n in nav if n.tab %}
+  {% for n in nav if n.tab or user.role == 'engineer' %}
   <a href="{{ n.href }}" class="tab {{ 'active' if section == n.key else '' }}">
     {{ n.label.replace('Hiring requests', 'Requests') }}
     {% if n.key == 'needs-you' and needs_you_count %}<span class="badge">{{ needs_you_count }}</span>{% endif %}
   </a>
   {% endfor %}
 </nav>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+{% if user.role != 'engineer' %}
+<dialog id="flag-dialog" class="flag-dialog">
+  <form hx-post="/problems" hx-target="#toast" hx-swap="innerHTML"
+        hx-on::after-request="if (event.detail.successful) { this.reset(); document.getElementById('flag-dialog').close(); }">
+    <h2>Flag a problem</h2>
+    <p class="muted small">Tell us in a sentence or two. The page you are on and the recent activity for it are attached for the engineers automatically.</p>
+    <label class="field"><span>What looks wrong?</span>
+      <textarea name="message" rows="4" maxlength="2000" required></textarea></label>
+    <input type="hidden" name="page_url" id="flag-page-url" value="">
+    <div class="actions">
+      <button type="submit" class="btn-primary">Send to engineering</button>
+      <button type="button" onclick="document.getElementById('flag-dialog').close()">Cancel</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
 {% endblock %}

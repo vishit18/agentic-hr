@@ -12,6 +12,7 @@ from app.core.auth import (
     burn_password_check,
     get_current_user,
     get_current_user_optional,
+    home_path,
     login_session,
     logout_session,
     verify_password,
@@ -31,7 +32,7 @@ TOO_MANY = "Too many failed attempts. Please wait a few minutes and try again."
 @router.get("/login")
 def login_form(request: Request, user: User | None = Depends(get_current_user_optional)) -> Response:
     if user is not None:
-        return RedirectResponse("/needs-you", status_code=303)
+        return RedirectResponse(home_path(user), status_code=303)
     return render(request, "login.html")
 
 
@@ -66,7 +67,7 @@ def login_submit(
             entity_id=user.id,
         )
         db.commit()
-        response = RedirectResponse("/needs-you", status_code=303)
+        response = RedirectResponse(home_path(user), status_code=303)
         login_session(response, user.id)
         return response
 

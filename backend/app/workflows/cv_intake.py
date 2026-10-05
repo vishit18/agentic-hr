@@ -194,6 +194,15 @@ def run_extraction(session: Session, text: str, file_id: int | None, job_id: int
     except LLMValidationError:
         extracted, ai_used, status, note = extractor.fallback(text), False, "failed", "model output invalid"
     built = build_profile(extracted, text, ai_used=ai_used)
+    if ai_used and len(text) > settings.llm_max_cv_chars:
+        # The model only saw the first part of this CV: later jobs or qualifications may be missing.
+        built.data["truncated"] = {"read_chars": settings.llm_max_cv_chars, "total_chars": len(text)}
+        built.issues.append(
+            f"Long CV: the AI read the first {settings.llm_max_cv_chars} of {len(text)} characters, "
+            "so later jobs or qualifications may be missing"
+        )
+        built.data["issues"] = built.issues
+        status = "incomplete"
     if note and status == "failed":
         built.issues.append("The AI output could not be validated; basic details were read by code only")
         built.low_confidence = True
@@ -306,6 +315,10 @@ def finish_candidate(session: Session, resolution: Resolution, candidate: Candid
              "evidence": resolution.evidence, "score": resolution.score, "kind": resolution.action,
              "suggestion": suggestion},
         )
+    if built.data.get("truncated"):
+        _review(session, "incomplete_extraction", f"{built.data.get('name') or label}: CV is long, details may be missing",
+                "; ".join(i for i in built.issues if i.startswith("Long CV")), "candidate", candidate.id,
+                {"version_id": version.id, **built.data["truncated"]})
     if built.low_confidence:
         _review(session, "low_confidence", f"Check the details read from {label}",
                 "; ".join(built.issues) or "Low confidence extraction", "candidate", candidate.id)
@@ -384,16 +397,21 @@ def reextract(session: Session, job: Job) -> None:
     text = version.search_text or ""
     result = extractor.extract(text, get_client())  # LLMUnavailable propagates -> retried with backoff
     built = build_profile(result.parsed, text, ai_used=True)
+    if len(text) > settings.llm_max_cv_chars:
+        built.data["truncated"] = {"read_chars": settings.llm_max_cv_chars, "total_chars": len(text)}
+        built.issues.append(f"Long CV: the AI read the first {settings.llm_max_cv_chars} of {len(text)} characters, "
+                            "so later jobs or qualifications may be missing")
+        built.data["issues"] = built.issues
     apply_profile(version, built)
-    version.extraction_status = "ok"
+    version.extraction_status = "incomplete" if built.data.get("truncated") else "ok"
     add_identifiers(session, version.candidate_id, version.id, built.data)
     audit(session, actor_type="agent", actor_name="extractor", action="agent.extract", entity_type="candidate_version",
           entity_id=version.id, input=text, output={"upgraded_from": "ai_pending"}, model=result.model,
           prompt_version=extractor.PROMPT_VERSION, latency_ms=result.latency_ms, job_id=job.id)
     resolution = resolve(session, built.data, exclude_candidate_ids={version.candidate_id})
-    if resolution.action in {"possible_match", "ambiguous"}:
-        candidate = session.get(Candidate, version.candidate_id)
-        assert candidate is not None
+    candidate = session.get(Candidate, version.candidate_id)
+    assert candidate is not None
+    if resolution.action in {"possible_match", "ambiguous"} or built.data.get("truncated"):
         finish_candidate(session, resolution, candidate, version, built, "this CV", job.id)
     elif built.low_confidence:
         _review(session, "low_confidence", "Check the details read from a CV", "; ".join(built.issues),

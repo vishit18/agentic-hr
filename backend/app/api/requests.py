@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.core import queue
 from app.core.audit import audit
-from app.core.auth import require_role
+from app.core.auth import require_staff
 from app.core.db import get_db
 from app.core.links import make_company_token
 from app.core.mail import send_mail
@@ -38,24 +38,14 @@ from app.workflows.hiring_request import OPEN_STATUSES, RequestInput, create_req
 from app.workflows.share import company_view, render_html, render_text
 
 router = APIRouter(dependencies=[])
-staff = require_role("recruiter", "hr_admin")
+staff = require_staff
 
 STATUS_LABELS = {
     "new": ("New", "pill-info"), "needs_info": ("Needs info", "pill-warn"), "shortlisting": ("Shortlisting", "pill-info"),
     "ready_for_review": ("Ready for review", "pill-info"), "shared": ("Shared", "pill-ok"), "closed": ("Closed", "pill-muted"),
 }
 CATEGORIES = ["certification", "skill", "job_title", "industry", "years_experience", "education", "language", "other"]
-ACTION_LABELS = {
-    "request.received": "Request received", "request.form_submitted": "Submitted through the company form",
-    "agent.parse_request": "Requirements read", "request.owner_assigned": "Owner assigned automatically",
-    "request.owner_changed": "Owner changed", "request.needs_info": "More information needed",
-    "request.shortlist_ready": "Shortlist ready for review", "request.shared": "Shortlist approved and sent",
-    "request.requirement_added": "Requirement added", "request.requirement_edited": "Requirement edited",
-    "request.requirement_removed": "Requirement removed", "request.rematch": "Shortlist update requested",
-    "request.candidate_removed": "Candidate removed from shortlist", "request.candidate_restored": "Candidate restored",
-    "request.candidate_added": "Candidate added by hand", "request.candidate_moved": "Shortlist reordered",
-    "request.closed": "Request closed", "request.reopened": "Request reopened", "file.uploaded": "File uploaded",
-}
+from app.core.labels import ACTION_LABELS  # noqa: E402
 
 
 def get_request(db: Session, request_id: int) -> Request:

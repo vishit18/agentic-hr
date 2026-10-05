@@ -84,19 +84,19 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 | 2.4 | Results table/cards with highlights and counts | Built (table on desktop, cards on phone) |
 | 3.1-3.4 | Workflow B steps 5-8 | Built. Hard filters in SQL, retrieval by meaning, transparent weighted score, explanations with verified quotes. Quality not yet measured (Phase 4) |
 | 3.5 | Approval gate before sharing | Built: preview, editable summaries, per-candidate CV and contact tick boxes, decision logged |
-| 4.1-4.5 | Section 4 | 4.1-4.3, 4.5 built (auto-link, possible-match review item with Adjudicator suggestion). 4.4 merge and undo: Phase 3 |
+| 4.1-4.5 | Section 4 | Built: auto-link, possible-match review item with Adjudicator suggestion, side-by-side review, merge with confirmation and undo from the Activity tab, unlink of an auto-linked CV with undo |
 | 5.1-5.7 | Request model, owner, shortlist and shared tables | Built (list with filters, detail, owner reassign, shortlist and shared status) |
-| 5.8 | Quarterly report, Excel export | |
+| 5.8 | Quarterly report, Excel export | Built (Reports page with quarter picker; workbook with summary, requests and shared candidates) |
 | 5.9-5.12 | Notes, attachments, next steps, timeline | Built |
 | 6.1-6.4 | Add-candidate form with source; same dedup path | Built (form, optional CV, duplicate warning, source shown on profile) |
-| 7.1 | Private by default, role-based access, nothing leaves the machine | |
-| 7.2 | Export all data (CSV/JSON + original files) | |
-| 7.3 | Login + roles; on AWS: Entra ID SSO | |
+| 7.1 | Private by default, role-based access, nothing leaves the machine | Built. Engineers see only tickets; HR staff see candidates and requests; only hr_admin sees Settings and exports everything |
+| 7.2 | Export all data (CSV/JSON + original files) | Built (admin only, one zip, logged) |
+| 7.3 | Login + roles; on AWS: Entra ID SSO | Built locally (argon2, roles, user management in Settings). SSO is the AWS plan |
 | 7.4 | Section 8 controls | |
-| 7.5 | Audit log table | |
-| 7.6 | Local: pg_dump script. AWS plan: RDS automated backups + S3 versioning | |
-| 7.7 | Retention setting + scheduled purge job | |
-| 8.1-8.2 | One hub, "Needs you" inbox | |
+| 7.5 | Audit log table | Built: every step and action; Activity timeline with filters |
+| 7.6 | Local: pg_dump script. AWS plan: RDS automated backups + S3 versioning | Built: scripts/backup.ps1 (and .sh), restore.ps1. Tested: a real dump was made and listed |
+| 7.7 | Retention setting + scheduled purge job | Built, off by default. Settings shows how many profiles a period would remove before it can be applied; purge runs daily; counts are logged |
+| 8.1-8.2 | One hub, "Needs you" inbox | Built (Needs you is the home page with an action for every item type) |
 | 8.3 | Excel export now; Microsoft Graph for SharePoint/OneDrive/Outlook planned | |
 | 8.4 | Modular workflows and agents, models in config | |
 | 8.5 | Responsive UI, tested on a phone over local Wi-Fi | |
@@ -119,9 +119,14 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 - Hard filters: a required certificate must be on the profile or mentioned in the CV text; a minimum number of years excludes only candidates whose years are known and too low (unknown years are kept and shown as unknown). A stated nationality requirement keeps only CVs that state that nationality.
 - Ranking is code only (weights in config). The Matcher agent writes the explanation and cannot change the order. Only the top 15 are listed and explained.
 - Request attachments are stored in `.requests/` inside the inbox folder, which the CV poller ignores.
-- Engineers are blocked from the requests pages; candidate pages are still open to every login. Tightening candidates to recruiter and hr_admin is planned for Phase 5.
+- Engineers see only the tickets page and the logs attached to a ticket. Candidate, request, activity, report and file routes are staff-only (recruiter, hr_admin). Engineer logins land on /tickets.
 - Local model limits: with LLM_NUM_CTX=4096 only the first 7000 characters of a CV or request are sent to the model. Measured CVs were 2.9k to 4.5k characters.
 - Ingest pauses for INGEST_BATCH_PAUSE_SECONDS after every INGEST_BATCH_SIZE processed CVs so the laptop can cool. Request and other jobs keep running during the pause.
+- `/` is the public status page when signed out and redirects signed-in users to /home (their landing page by role); /status always shows the status page.
+- A CV longer than LLM_MAX_CV_CHARS gets extraction status "incomplete" (shown as "Possibly incomplete") and a Needs-you item, because the AI only read the first part.
+- Merging keeps the older profile and moves the newer one's CVs and contact details onto it; the newest CV becomes current. Undo uses a snapshot stored in the audit row. Marking two profiles "different people" resolves the item but is not remembered for future CVs.
+- Ticket logs are copies of recent audit rows for the records the reporter was viewing, with emails and phone numbers masked. An engineer can open an agent step's raw input only for rows attached to that ticket, and each view is audited.
+- Retention is off (0 days) until an administrator sets it. Age is measured from the newest CV's file date. Profiles on the shortlist of an open request are kept. Originals in the read-only CV folder cannot be deleted by the hub.
 - (add more as decisions are made)
 
 ## 8. Defence checklist

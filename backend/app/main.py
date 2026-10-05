@@ -17,13 +17,17 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.api import activity as activity_api
+from app.api import admin as admin_api
 from app.api import auth as auth_api
 from app.api import candidates as candidates_api
 from app.api import home as home_api
 from app.api import public_form as public_form_api
 from app.api import requests as requests_api
+from app.api import review as review_api
+from app.api import tickets as tickets_api
 from app.config import settings
-from app.core.auth import NotAuthenticated, get_current_user_optional
+from app.core.auth import NotAuthenticated, get_current_user_optional, read_session
 from app.core.csrf import verify_csrf
 from app.core.db import SessionLocal
 from app.core.models import User
@@ -42,6 +46,10 @@ app.state.session_factory = SessionLocal
 
 app.include_router(auth_api.router)
 app.include_router(home_api.router)
+app.include_router(activity_api.router)
+app.include_router(admin_api.router)
+app.include_router(review_api.router)
+app.include_router(tickets_api.router)
 app.include_router(candidates_api.router)
 app.include_router(requests_api.router)
 app.include_router(public_form_api.router)
@@ -148,7 +156,10 @@ def run_checks() -> list[dict[str, Any]]:
 
 @app.get("/", response_class=HTMLResponse)
 @app.get("/status", response_class=HTMLResponse)
-def status_page(request: Request) -> HTMLResponse:
+def status_page(request: Request) -> Response:
+    # Signed-in users landing on "/" go to their home; "/status" always shows this page. No database needed.
+    if request.url.path == "/" and read_session(request).get("uid"):
+        return RedirectResponse("/home", status_code=303)
     checks = run_checks()
     all_ok = all(c["ok"] for c in checks)
     return templates.TemplateResponse(

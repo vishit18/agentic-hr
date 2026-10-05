@@ -1,0 +1,56 @@
+{% extends "shell.html" %}
+{% block title %}Activity · Cadence HR Hub{% endblock %}
+{% block shell_class %}wide{% endblock %}
+
+{% block list_pane %}
+<h1 class="pane-title">Activity</h1>
+<nav class="tabs" aria-label="Activity views">
+  <a class="tab-link {{ 'active' if tab == 'timeline' else '' }}" href="/activity">Timeline</a>
+  <a class="tab-link {{ 'active' if tab == 'agents' else '' }}" href="/activity?tab=agents">Agents working now</a>
+</nav>
+
+{% if tab == 'agents' %}
+  <div id="agents" hx-get="/activity/agents" hx-trigger="every 3s" hx-swap="innerHTML">
+    {% include "_agents.html" %}
+  </div>
+{% else %}
+  <form method="get" action="/activity" class="filters">
+    <div class="filter-grid">
+      <label class="field"><span>Candidate number</span><input name="candidate" inputmode="numeric" value="{{ q.candidate }}"></label>
+      <label class="field"><span>Request number</span><input name="req" inputmode="numeric" value="{{ q.req }}"></label>
+      <label class="field"><span>Person (email)</span><input name="user_q" value="{{ q.user_q }}"></label>
+      <label class="field"><span>Agent or system step</span><input name="agent" value="{{ q.agent }}" placeholder="extractor, matcher ..."></label>
+    </div>
+    <label class="check"><input type="checkbox" name="noise" value="1" {{ 'checked' if q.noise else '' }}> Include routine background messages and sign-ins</label>
+    <div class="actions"><button type="submit">Filter</button><a class="small" href="/activity">Clear</a></div>
+  </form>
+  <p class="count"><strong>{{ total }}</strong> event{{ '' if total == 1 else 's' }}</p>
+  {% if rows %}
+  <ul class="rows">
+    {% for a in rows %}
+    <li class="row">
+      <div class="row-main">
+        <strong>{{ a.action|actionlabel }}</strong>
+        <div class="muted small">{{ a.actor_name or a.actor_type }}
+          {% if a.entity_type == 'candidate' and a.entity_id %}· <a href="/candidates/{{ a.entity_id }}">candidate {{ a.entity_id }}</a>{% endif %}
+          {% if a.entity_type == 'request' and a.entity_id %}· <a href="/requests/{{ a.entity_id }}">request {{ a.entity_id }}</a>{% endif %}
+          {% if a.job_id %}· <a href="/activity/jobs/{{ a.job_id }}">task {{ a.job_id }}</a>{% endif %}
+          {% if a.model %}· AI model {{ a.model }}{% endif %}</div>
+      </div>
+      <time class="muted small" title="{{ a.ts|absdate }}">{{ a.ts|reltime }}</time>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if pages > 1 %}
+  <nav class="pager">
+    {% if page > 1 %}<a class="btn" href="{{ request.url.include_query_params(page=page - 1) }}">&larr; Newer</a>{% endif %}
+    <span class="muted small">Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a class="btn" href="{{ request.url.include_query_params(page=page + 1) }}">Older &rarr;</a>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <div class="empty"><p><strong>Nothing matches.</strong></p><p class="muted">Every action by a person or an agent is listed here. Try clearing the filters.</p></div>
+  {% endif %}
+{% endif %}
+{% endblock %}
+{% block detail_pane %}{% endblock %}

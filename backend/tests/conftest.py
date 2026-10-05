@@ -128,3 +128,13 @@ def users(db) -> dict[str, User]:
         made[role] = user
     db.commit()
     return made
+
+
+@pytest.fixture(autouse=True)
+def ai_is_up(monkeypatch):
+    """Pages check whether the AI service is reachable (for the banner). Tests never touch the network."""
+    from app.api import activity
+    from app.core import web
+
+    monkeypatch.setattr(web, "ai_available", lambda: True)
+    monkeypatch.setattr(activity, "ai_available", lambda: True)

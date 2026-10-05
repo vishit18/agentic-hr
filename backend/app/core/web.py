@@ -1,8 +1,11 @@
 """Template rendering shared by all pages: user, CSRF token, nav, counts."""
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 from typing import Any
+
+import httpx
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
@@ -38,16 +41,36 @@ def absdate(value: datetime | None) -> str:
     return value.strftime("%d %b %Y %H:%M") if value else ""
 
 
+from app.core.labels import action_label  # noqa: E402
+
+templates.env.filters["actionlabel"] = action_label
 templates.env.filters["reltime"] = reltime
 templates.env.filters["absdate"] = absdate
 
+_ai_cache: dict[str, Any] = {"at": -1e9, "ok": True}
+
+
+def ai_available() -> bool:
+    """Is the local AI service reachable? Cached for 15 s so pages stay fast; used for the fallback banner."""
+    now = time.monotonic()
+    if now - _ai_cache["at"] < 15:
+        return bool(_ai_cache["ok"])
+    try:
+        httpx.get(f"{settings.ollama_base_url}/api/tags", timeout=1.5).raise_for_status()
+        ok = True
+    except Exception:  # noqa: BLE001 - any failure means "treat as down"
+        ok = False
+    _ai_cache.update(at=now, ok=ok)
+    return ok
+
+
 # key, label, href, roles allowed (None = everyone logged in), shown in the mobile tab bar
 NAV: list[dict[str, Any]] = [
-    {"key": "needs-you", "label": "Needs you", "href": "/needs-you", "roles": None, "tab": True},
-    {"key": "requests", "label": "Hiring requests", "href": "/requests", "roles": None, "tab": True},
-    {"key": "candidates", "label": "Candidates", "href": "/candidates", "roles": None, "tab": True},
-    {"key": "activity", "label": "Activity", "href": "/activity", "roles": None, "tab": True},
-    {"key": "reports", "label": "Reports", "href": "/reports", "roles": None, "tab": True},
+    {"key": "needs-you", "label": "Needs you", "href": "/needs-you", "roles": ("recruiter", "hr_admin"), "tab": True},
+    {"key": "requests", "label": "Hiring requests", "href": "/requests", "roles": ("recruiter", "hr_admin"), "tab": True},
+    {"key": "candidates", "label": "Candidates", "href": "/candidates", "roles": ("recruiter", "hr_admin"), "tab": True},
+    {"key": "activity", "label": "Activity", "href": "/activity", "roles": ("recruiter", "hr_admin"), "tab": True},
+    {"key": "reports", "label": "Reports", "href": "/reports", "roles": ("recruiter", "hr_admin"), "tab": True},
     {"key": "tickets", "label": "Tickets", "href": "/tickets", "roles": ("engineer",), "tab": False},
     {"key": "settings", "label": "Settings", "href": "/settings", "roles": ("hr_admin",), "tab": False},
 ]
@@ -72,6 +95,7 @@ def render(
     ctx: dict[str, Any] = {"csrf_token": session["csrf"], "user": user, "section": section}
     if user is not None:
         ctx["nav"] = nav_for(user)
+        ctx["ai_down"] = user.role != "engineer" and not ai_available()
         if db is not None:
             ctx["needs_you_count"] = db.scalar(
                 select(func.count()).select_from(ReviewItem).where(ReviewItem.status == "open")

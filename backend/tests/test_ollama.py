@@ -126,7 +126,7 @@ def test_health_reports_missing_models_and_down() -> None:
 
     partial = client_with(tags([settings.llm_model_extract])).health()
     assert partial.ok is False
-    assert settings.llm_model_rerank in partial.missing_models
+    assert settings.embedding_model in partial.missing_models
 
     def down(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("down")

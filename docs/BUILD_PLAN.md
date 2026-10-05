@@ -36,11 +36,11 @@ Already done: compose, Dockerfile, config, status page, worker heartbeat, base t
 - [x] Approve and send (preview) -> Mailpit; decision log
 
 ## Phase 3: Control and trust (3h)
-- [ ] "Needs you" inbox as the home page
-- [ ] Merge + undo, unlink auto-linked version
-- [ ] Flag a problem -> ticket with logs; engineer view
-- [ ] Activity timeline, agent activity panel with fallback banner
-- [ ] Reports + Excel export, export-all (7.2), retention setting (7.7), pg_dump backup script (7.6)
+- [x] "Needs you" inbox as the home page
+- [x] Merge + undo, unlink auto-linked version
+- [x] Flag a problem -> ticket with logs; engineer view
+- [x] Activity timeline, agent activity panel with fallback banner
+- [x] Reports + Excel export, export-all (7.2), retention setting (7.7), pg_dump backup script (7.6)
 
 ## Phase 4: Evaluation (2h)
 - [ ] Hand-label ~40 CVs into eval/labels.jsonl (field values + duplicate groups; no raw text)

@@ -34,3 +34,4 @@ Thumbs.db
 
 # local claude overrides
 .claude/settings.local.json
+backups/
