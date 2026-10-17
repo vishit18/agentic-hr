@@ -9,7 +9,7 @@
 
 ## 2. Workflow A: CV arrives
 
-Trigger: worker polls CVS_DIR and INBOX_DIR (new or changed file), UI upload, or a sourced candidate form (req 6). On AWS: Microsoft Graph change notification from SharePoint/OneDrive.
+Trigger: worker polls CVS_DIR and INBOX_DIR (new or changed file), UI upload, or a sourced candidate form (req 6).
 
 | # | Step | Actor | Notes |
 |---|------|-------|-------|
@@ -28,7 +28,7 @@ Outcome: a profile, or a review item, waiting for HR.
 
 ## 3. Workflow B: Hiring request arrives
 
-Trigger: company submits the tokenised e-form, or a recruiter pastes an email / uploads a JD. On AWS: Outlook shared mailbox via Microsoft Graph.
+Trigger: company submits the tokenised e-form, or a recruiter pastes an email / uploads a JD.
 
 | # | Step | Actor | Notes |
 |---|------|-------|-------|
@@ -91,13 +91,13 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 | 6.1-6.4 | Add-candidate form with source; same dedup path | Built (form, optional CV, duplicate warning, source shown on profile) |
 | 7.1 | Private by default, role-based access, nothing leaves the machine | Built. Engineers see only tickets; HR staff see candidates and requests; only hr_admin sees Settings and exports everything |
 | 7.2 | Export all data (CSV/JSON + original files) | Built (admin only, one zip, logged) |
-| 7.3 | Login + roles; on AWS: Entra ID SSO | Built locally (argon2, roles, user management in Settings). SSO is the AWS plan |
+| 7.3 | Login + roles | Built locally (argon2, roles, user management in Settings). SSO not built |
 | 7.4 | Section 8 controls | Built and tested: upload checks, auth on every route (route-sweep test), CSRF, XSS and NUL-byte handling, rate limits, argon2, secrets in env only, hidden internals for signed-out visitors (tests/test_phase5_break_it.py). Not done: formal pen test, SSO, shared rate-limit store |
 | 7.5 | Audit log table | Built: every step and action; Activity timeline with filters |
-| 7.6 | Local: pg_dump script. AWS plan: RDS automated backups + S3 versioning | Built: scripts/backup.ps1 (and .sh), restore.ps1. Tested: a real dump was made and listed |
+| 7.6 | pg_dump script | Built: scripts/backup.ps1 (and .sh), restore.ps1. Tested: a real dump was made and listed |
 | 7.7 | Retention setting + scheduled purge job | Built, off by default. Settings shows how many profiles a period would remove before it can be applied; purge runs daily; counts are logged |
 | 8.1-8.2 | One hub, "Needs you" inbox | Built (Needs you is the home page with an action for every item type) |
-| 8.3 | Excel export now; Microsoft Graph for SharePoint/OneDrive/Outlook planned | Partial: Excel export built. Graph connectors and Entra sign-in are not built. Design, permissions and cost are in DEFENCE.md section 3 |
+| 8.3 | Excel export now; Microsoft Graph for SharePoint/OneDrive/Outlook planned | Partial: Excel export built. Graph connectors and Entra sign-in are not built. Not planned for now |
 | 8.4 | Modular workflows and agents, models in config | Built: one module per workflow and agent, prompts versioned in files, model names only in config |
 | 8.5 | Responsive UI, tested on a phone over local Wi-Fi | Partial: mobile layout built (bottom tabs, cards). The phone pass over local Wi-Fi has not been done yet |
 
@@ -106,7 +106,7 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 - Nationality is only recorded if stated in the CV, and only used as a filter when a request states it as a role requirement.
 - Legacy .doc files go to the review queue rather than being converted (keeps the stack small and free).
 - `/` stays the public status page until Phase 3; the app shell lives at `/needs-you` (login lands there). `/status` is an alias. In Phase 3 `/` redirects logged-in users to Needs you.
-- Login rate limiting is in-memory (5 failures per email, 20 per IP, per 10 minutes), fine for one api process. On AWS it moves to a shared store.
+- Login rate limiting is in-memory (5 failures per email, 20 per IP, per 10 minutes), fine for one api process.
 - Tests run against a throw-away database (`hub_test`, `hub_test_migrations`), created and dropped by the test run. Helpers refuse any other database name, so a migration downgrade can never touch dev data.
 - The seed only creates demo accounts whose SEED_*_PASSWORD is set, and never overwrites an existing user.
 - The extractor asks the model for name, experience, education, skills, certificates, qualifications and location only. Measured on 20 real CVs: adding nationality and summary fields made qwen2.5:7b return no experience for 9 of 20; without them it found experience for 20 of 20. Nationality is read by code only from an explicit "Nationality:" or "Citizenship:" line.
@@ -138,17 +138,7 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 - Rate limiting on login and the public form; tokenised form links.
 - Logs store IDs and hashes, not raw CV text; raw agent input is retrievable by engineers, and that access is itself audited.
 
-## 9. AWS + Microsoft 365 (presentation only, no spend)
-- ECS Fargate (api + worker), RDS PostgreSQL with pgvector, S3 for originals (SSE-KMS), SQS replacing the Postgres queue, Secrets Manager, CloudWatch logs.
-- Region: eu-west-2 London, or me-south-1 Bahrain if data residency requires it.
-- LLM on AWS: Amazon Bedrock (no training on customer data) or self-hosted open models on a GPU instance, with the same prompts and schemas.
-- Microsoft Graph: change notifications on SharePoint/OneDrive folders trigger intake; Outlook shared mailbox for requests; Entra ID OIDC for staff sign-in.
-- Private subnets, VPC endpoints, WAF on the ALB, KMS everywhere, IAM task roles.
-- Scale 490 -> 11,000+: workers scale on queue depth, embeddings batched, pgvector HNSW index.
-- CI/CD: GitHub Actions -> ECR -> ECS, migrations as a pre-deploy step.
-- Monthly cost: worked estimate with the AWS Pricing Calculator, shown in the slides.
-
-## 10. Copilot Studio argument (both sides)
+## 9. Copilot Studio argument (both sides)
 For: already inside M365, native connectors, quick for simple flows, familiar admin and governance.
 Against: identity resolution and evidence-verified matching are hard to express and test in a visual builder; limited evals and versioning; message-based licensing at 11k CVs; coarser audit trail; less control over which model sees the data; lock-in.
-Position: custom code keeps the logic testable and the data inside Agentic HR's own AWS account, while Microsoft Graph keeps it connected to M365.
+Position: custom code keeps the logic testable and the data on Agentic HR's own machine.

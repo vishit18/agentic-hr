@@ -57,8 +57,8 @@ Already done: compose, Dockerfile, config, status page, worker heartbeat, base t
 ## Phase 6: Defence prep (2h)
 - [x] Workflow diagrams (trigger, steps, outcome, actor per step): docs/DEFENCE.md sections 1-2
 - [x] Requirements table fully filled: ARCHITECTURE.md section 6 (every row now has an answer; 8.3 and 8.5 are partial)
-- [x] AWS diagram + monthly cost working: DEFENCE.md section 3 (about 510 USD a month production, about 230 lean; numbers are estimates to re-check in the Pricing Calculator)
-- [x] Copilot Studio for and against: DEFENCE.md section 4
+- [-] AWS diagram and cost: dropped (local only for now)
+- [x] Copilot Studio for and against: DEFENCE.md section 3
 - [x] Cleanup script (scripts/cleanup.ps1, dry run by default) and confirmation email draft (docs/CLEANUP_EMAIL.md, not sent)
 
 ## Before the meeting

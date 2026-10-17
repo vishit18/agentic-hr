@@ -1,6 +1,6 @@
 # Agentic HR Intelligence Hub
 
-24-hour hackathon build. Internal tool for the Agentic HR team to handle subsidiary hiring.
+Internal tool for the Agentic HR team to handle subsidiary hiring. Started as a 24-hour build; now maintained as a local app.
 Source brief: ../cadence-hackathon-main/README.md and REQUIREMENTS.md (read these first; never edit them).
 Requirements are numbered 1.1 to 8.5. Every one needs an answer: built, partial, or not built with a reason and plan. Track them in docs/ARCHITECTURE.md section 6.
 Design: docs/ARCHITECTURE.md. Screens: docs/UI.md. Plan: docs/BUILD_PLAN.md.
@@ -50,7 +50,7 @@ Nothing leaves Agentic HR until a named person approves it.
 - Tests: `docker compose run --rm api pytest -q tests`
 - Logs: `docker compose logs -f api worker`
 - Reset all data: `docker compose down -v`
-- Status page: http://localhost:8000 (keep it working; it is the first thing to check when something breaks)
+- Status page: http://localhost:8000, or your API_PORT (keep it working; it is the first thing to check when something breaks)
 Makefile has the same commands as shortcuts.
 
 ## Layout
@@ -92,7 +92,7 @@ Plan before coding anything bigger than one file. If a requirement is ambiguous,
 ### Phase gate (applies every session)
 Work one phase of docs/BUILD_PLAN.md at a time. When a phase is finished, stop. Before stopping:
 1. Run the tests (`docker compose run --rm api pytest -q tests`) and show the real result.
-2. Check the status page (http://localhost:8000, or /health) is green.
+2. Check the status page (http://localhost:8000 or your API_PORT, or /health) is green.
 3. Make a git commit for the phase.
 4. Give a short summary: what was built, what is partial, and anything you are unsure about.
 Then wait for the user's OK before starting the next phase. Do not begin the next phase on your own.

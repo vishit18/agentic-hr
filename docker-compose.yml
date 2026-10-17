@@ -46,7 +46,7 @@ services:
       - ${CVS_DIR}:/cvs:ro
       - ${INBOX_DIR}:/inbox
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

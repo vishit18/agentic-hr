@@ -21,6 +21,7 @@ from app.parsing.normalise import (
     parse_date,
     years_of_experience,
 )
+from app.parsing.location import guess_location
 from app.parsing.text import squash
 
 # A whole line that starts with the label. Never inferred from anything else.
@@ -153,6 +154,8 @@ def build_profile(
                 skills.append(canon)
         skills = dedupe_keep_order(skills)
 
+    location = (ex.location or "").strip() or guess_location(text)
+
     # --- derived ---
     years = years_of_experience(ranges) if ranges else None
     industry_years = {k: years_of_experience(v) for k, v in industry_ranges.items()}
@@ -177,7 +180,7 @@ def build_profile(
         "name": name,
         "emails": emails,
         "phones": phones,
-        "location": (ex.location or "").strip() or None,
+        "location": location,
         "summary": None,
         "nationality": nationality,
         "nationality_snippet": nationality_snippet,

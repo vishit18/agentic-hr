@@ -95,84 +95,7 @@ flowchart TD
 | 8 Explain | Agent (qwen2.5:14b) | Plain-words reasons | Unverified quotes are dropped; list still shows scores |
 | 10-11 Decide | Person | Anything leaving Agentic HR | Cannot be skipped |
 
-## 3. Running it on AWS and Microsoft 365
-
-Same containers, same prompts, same schemas. Only configuration changes: database URL, queue, storage, model endpoint, sign-in.
-
-```mermaid
-flowchart LR
-    subgraph M365[Microsoft 365 tenant]
-        SP[SharePoint and OneDrive CV folders]
-        OL[Outlook shared mailbox for requests]
-        EN[Entra ID sign-in]
-    end
-    subgraph AWS[AWS account, private by default]
-        WAF[WAF] --> ALB[Application Load Balancer]
-        subgraph VPC[VPC, private subnets in 2 AZs]
-            ALB --> API[ECS Fargate: api]
-            SQS[SQS queue and dead-letter queue] --> WK[ECS Fargate: workers, scale on queue depth]
-            API --> RDS[(RDS PostgreSQL 16 with pgvector, Multi-AZ)]
-            WK --> RDS
-            API --> SQS
-            WK --> S3[(S3 originals, SSE-KMS, versioning)]
-            WK --> BR[Amazon Bedrock models, no training on customer data]
-            API --> BR
-        end
-        SM[Secrets Manager] -.-> API
-        SM -.-> WK
-        CW[CloudWatch logs and alarms]
-        API -.-> CW
-        WK -.-> CW
-    end
-    SP -->|Graph change notification, webhook| API
-    API -->|Graph: fetch file| SP
-    OL -->|Graph: new mail| API
-    EN -->|OIDC| API
-    GH[GitHub Actions] -->|build, push| ECR[ECR] --> API
-```
-
-| Question | Answer |
-|----------|--------|
-| Reading CVs from SharePoint and OneDrive | Graph change notifications call a webhook on the api, which enqueues an intake job. Workers download the file with a scoped app permission (Sites.Selected, so only the CV library) and store the original in S3. Nightly delta query catches anything a notification missed |
-| Reading requests from Outlook | Graph subscription on one shared mailbox. Body and attachments become the same request input as the form |
-| Staff sign-in | Entra ID OIDC replaces the local password form. Entra groups map to recruiter, hr_admin and engineer. Roles and CSRF code stay unchanged |
-| Network | Two AZs. api and workers in private subnets, RDS isolated, only the ALB is public, WAF in front. One NAT for Graph calls, VPC endpoints for S3, ECR, Logs, Secrets Manager and Bedrock |
-| Permissions | One IAM task role per service, least privilege. No long-lived keys |
-| Encryption | TLS everywhere; KMS keys for RDS, S3, SQS and logs |
-| Secrets | Secrets Manager, injected at task start, never in the image or repo |
-| Scaling 490 to 11,000+ | Workers scale on SQS depth. Model calls are the limit, so concurrency is set per task. pgvector gets an HNSW index. Ingest pauses (batch pause) become autoscaling limits |
-| Logs | CloudWatch, 30 days hot, then S3. Audit log table stays in Postgres and is the legal record |
-| Region | eu-west-2 London by default. me-south-1 Bahrain if residency requires it. Check that the chosen Bedrock models are offered in that region |
-| Backups | RDS automated backups with point-in-time recovery (14 days), S3 versioning, weekly restore test |
-| Code to production | GitHub Actions: tests, build image, push to ECR, run migrations as a pre-deploy task, rolling deploy to ECS with automatic rollback |
-
-### Monthly cost, with the working
-
-These are estimates from approximate public list prices for London, 730 hours a month. Prices change, so rebuild this in the AWS Pricing Calculator and replace the numbers before the meeting. The two assumptions that matter most are marked.
-
-| Item | Working | USD / month |
-|------|---------|-------------|
-| Fargate api | 1 task, 1 vCPU, 2 GB, always on | 36 |
-| Fargate workers | about 1.5 tasks on average, 2 vCPU and 4 GB each | 110 |
-| RDS PostgreSQL | db.t4g.large Multi-AZ about 212, plus 100 GB storage about 24 | 236 |
-| Load balancer | 1 ALB plus light traffic | 27 |
-| WAF | web ACL plus 5 rules plus requests | 12 |
-| NAT gateway | 1 gateway plus light data, for Graph calls | 41 |
-| S3 | 11,000 CVs at about 0.5 MB is about 5.5 GB, with versions | 3 |
-| SQS | well under a million requests | 1 |
-| Secrets Manager and KMS | about 5 secrets, 3 keys | 6 |
-| CloudWatch | about 20 GB logs ingested, 30 days kept | 12 |
-| Bedrock, steady state | 300 new CVs and 100 requests a month (assumption A) | 15 |
-| Other (data transfer, ECR, DNS) | allowance | 10 |
-| **Total, production** | | **about 510** |
-
-- Assumption A: a small model priced near 1 USD per million input tokens and 5 USD per million output tokens, about 4,000 tokens in and 1,000 out per CV, and 15 explanations per request.
-- One-off first ingest of 11,000 CVs: about 44 million input and 11 million output tokens, roughly **100 USD** once under assumption A. Embeddings add under 1 USD.
-- Assumption B: a GPU instance instead of Bedrock. A g5.xlarge running all month is about 740 USD, so Bedrock is cheaper unless volume is far higher than this, but the GPU keeps every byte inside our own network. It is a config change.
-- Lean pilot: single-AZ db.t4g.medium (about 65 with storage), 1 api and 1 worker task (about 70), no WAF, one small NAT: **about 230 per month**. Fine for the pilot, not for resilience.
-- No extra licence cost for Microsoft 365 or Entra ID, since Agentic HR already has them. Graph API calls are not billed per call for this use.
-
-## 4. Copilot Studio: for and against
+## 3. Copilot Studio: for and against
 
 **What Copilot Studio does well (be fair about this)**
 - It already lives inside Microsoft 365: identity, SharePoint, OneDrive and Outlook connectors work out of the box, and IT already knows how to govern it.
@@ -187,15 +110,15 @@ These are estimates from approximate public list prices for London, 730 hours a 
 | 3.x shortlist where every claim quotes the CV | No built-in step to verify a quote against source text | Code verifies each quote and drops unverified claims |
 | Measured accuracy (README section 6) | Limited evaluation tooling and versioning of agents | Versioned prompts, eval scripts, 276 automated tests |
 | 7.5 audit: who, what, model, prompt version, when | Conversation-level analytics, coarser than per-step records | One audit row per agent step and human action |
-| Choice and control of the model that sees CV text | Models are chosen by the platform | Model names are config. Local, Bedrock or GPU, all swappable |
-| Volume: 11,000 CVs and growing | Message and capacity based licensing grows with every CV and every explanation | Cost is compute, estimated above |
+| Choice and control of the model that sees CV text | Models are chosen by the platform | Model names are config. Any local model, swappable |
+| Volume: 11,000 CVs and growing | Message and capacity based licensing grows with every CV and every explanation | Runs on your own hardware, no per-CV fees |
 | Safe handling of hostile files and text | Limited control over parsing, file safety and prompt-injection defence | Magic-byte checks, macro rejection, text treated as data, schema-checked output |
 | Change and testing | Visual flows are difficult to diff, review and roll back | Git, CI, migrations, rollback |
 | Phone and Outlook-style UI built for this team | Chat-style surface | 3-pane inbox with "Needs you" |
 
 **On the data security worry that started the discussion**
 - Copilot Studio keeps data in Microsoft, but candidate data would still pass through connectors, a shared model service and flow run history that Agentic HR does not control in detail.
-- This hub runs in Agentic HR's own AWS account. CVs sit in an encrypted bucket, the model endpoint is private, nothing is used for training, and every access is in an audit log that an administrator owns.
-- It is not either-or: the hub reads from SharePoint and signs staff in through Entra ID, so people keep working where they already work. If the company later wants a Copilot front end, it can call the hub's API. The logic stays testable.
+- This hub runs on Agentic HR's own machine. CVs stay on its disk, the models run locally, nothing is used for training, and every access is in an audit log that an administrator owns.
+- If the company later wants a Copilot front end or Microsoft 365 connections, they can be added around the hub. The logic stays testable.
 
 **Honest limits of our approach:** we own the code, so we own the maintenance. That needs a named engineer owner, which is why the pack includes tests, a status page and a ticket flow.
