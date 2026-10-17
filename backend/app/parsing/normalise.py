@@ -48,11 +48,24 @@ def normalise_phone(value: str, region: str | None = None) -> str | None:
 PHONE_REGIONS = ["IN", "PK", "EG", "SA", "AE", "GB", "US", "PH", "JO", "LB", "BD", "LK", "NG", "KE", "OM", "KW", "QA"]
 
 
+# "08/2025 - 06/2025" or "2025 08 2025" run together are a valid-looking number in some regions, but are dates.
+# A number written with a leading "+" is trusted. Otherwise digits made only of 4-digit years and 2-digit months are dates.
+_DATE_DIGITS = re.compile(r"(?:(?:19|20)\d{2}(?:0[1-9]|1[0-2])?){2,3}")
+
+
+def looks_like_dates(raw: str) -> bool:
+    if raw.strip().startswith("+"):
+        return False
+    return bool(_DATE_DIGITS.fullmatch(re.sub(r"\D", "", raw)))
+
+
 def find_phones(text: str, region: str | None = None) -> list[str]:
     first = region or settings.default_phone_region
     found: dict[tuple[int, int], str] = {}
     for reg in [first, *[r for r in PHONE_REGIONS if r != first]]:
         for match in phonenumbers.PhoneNumberMatcher(text, reg, phonenumbers.Leniency.VALID):
+            if looks_like_dates(match.raw_string):
+                continue
             found.setdefault(
                 (match.start, match.end),
                 phonenumbers.format_number(match.number, phonenumbers.PhoneNumberFormat.E164),

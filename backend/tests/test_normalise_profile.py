@@ -39,6 +39,23 @@ def test_local_numbers_without_country_code_are_matched_in_likely_regions() -> N
     assert find_phones("Call 3600 1234 or +44 20 7946 0958") == ["+97336001234", "+442079460958"]
 
 
+@pytest.mark.parametrize("text", [
+    "Analyst 08/2025 - 06/2025 Goldman",
+    "2025 08 2025",
+    "Intern (2023-09 - 2023) and (2020 06 2024)",
+    "Jan 2025082025 to date",
+    "Projects 2025 - 2025 06 2022",
+])
+def test_date_ranges_written_compactly_are_not_phones(text) -> None:
+    assert find_phones(text) == [], text
+
+
+def test_real_numbers_that_start_like_a_year_are_kept() -> None:
+    assert find_phones("Phone: +1 202 555 0143") == ["+12025550143"]
+    assert find_phones("Phone: (202) 555-0143", region="US") == ["+12025550143"]
+    assert find_phones("Mobile +91 98765 43210") == ["+919876543210"]
+
+
 def test_year_ranges_are_not_mistaken_for_phones() -> None:
     assert find_phones("Accountant, Jan 2018 - Present. Born 1985-03-12.") == []
 
