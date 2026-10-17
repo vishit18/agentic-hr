@@ -341,6 +341,24 @@ def test_unlink_an_auto_linked_cv_and_undo(db, users) -> None:
     assert db.get(CandidateVersion, v2.id).auto_linked is True and db.get(Candidate, new_id) is None
 
 
+def test_unlink_takes_the_cvs_own_contact_details_with_it_and_undo_gives_them_back(db, users) -> None:
+    """A person's email must not stay on the old profile, or the next CV from them could link to the wrong person."""
+    cand, v1, v2 = two_version_candidate(db)
+    db.add(CandidateIdentifier(candidate_id=cand.id, candidate_version_id=v2.id, kind="email", value="other@x.test"))
+    db.add(CandidateIdentifier(candidate_id=cand.id, candidate_version_id=v2.id, kind="phone", value="+97336001234"))
+    db.commit()
+    before = state_of(db, cand.id)
+    row = merge.unlink_version(db, v2.id, users["recruiter"])
+    db.commit()
+    new_id = row.output["snapshot"]["new_candidate_id"]
+    after = state_of(db, cand.id, new_id)
+    assert [v for _, v in after[cand.id]["idents"]] == ["mv@x.test"]
+    assert sorted(v for _, v in after[new_id]["idents"]) == ["+97336001234", "mv@x.test", "other@x.test"]
+    merge.undo_unlink(db, row.id, users["recruiter"])
+    db.commit()
+    assert state_of(db, cand.id) == before
+
+
 def test_unlink_needs_two_cvs_and_undo_is_refused_once_the_new_profile_is_used(db, users) -> None:
     solo = add_candidate(db, "Only One")
     with pytest.raises(MergeError, match="only CV"):

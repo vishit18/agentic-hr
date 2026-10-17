@@ -140,14 +140,24 @@ def unlink_version(session: Session, version_id: int, user: User) -> AuditLog:
             "old_current_before": old.current_version_id}
     v.candidate_id, v.version_no, v.auto_linked = new.id, 1, False
     new.current_version_id = v.id
+    # The CV's own contact details go with it. Left behind, they would let the next CV from that person
+    # link to the wrong profile.
+    moved = list(session.scalars(select(CandidateIdentifier).where(
+        CandidateIdentifier.candidate_version_id == v.id, CandidateIdentifier.candidate_id == old.id)))
+    for ident in moved:
+        ident.candidate_id = new.id
+    have = {(i.kind, i.value) for i in moved}
     created = []
     for kind, values in (("email", (v.data or {}).get("emails") or []), ("phone", (v.data or {}).get("phones") or [])):
         for value in values:
+            if (kind, value) in have:
+                continue
             ident = CandidateIdentifier(candidate_id=new.id, candidate_version_id=v.id, kind=kind, value=value)
             session.add(ident)
             session.flush()
             created.append(ident.id)
     snap["created_identifiers"] = created
+    snap["moved_identifiers"] = [i.id for i in moved]
     session.flush()
     latest = latest_version(session, old.id)
     old.current_version_id = latest.id if latest else None
@@ -174,6 +184,10 @@ def undo_unlink(session: Session, audit_id: int, user: User) -> AuditLog:
         ident = session.get(CandidateIdentifier, iid)
         if ident is not None:
             session.delete(ident)
+    for iid in snap.get("moved_identifiers", []):  # older audit rows have none
+        ident = session.get(CandidateIdentifier, iid)
+        if ident is not None:
+            ident.candidate_id = old.id
     session.flush()
     new.current_version_id = None
     session.flush()
