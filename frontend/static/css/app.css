@@ -46,7 +46,7 @@ a:hover { text-decoration: underline; }
   border-bottom: 1px solid var(--border);
 }
 
-.brand { font-weight: 700; color: var(--text); }
+.brand { font-weight: 700; color: var(--text); display: inline-flex; align-items: center; min-height: 44px; }
 
 .page {
   max-width: 1200px;
@@ -148,7 +148,7 @@ body.app { padding-bottom: 64px; }
   background: var(--bg);
   color: var(--text);
 }
-.agent-indicator { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.85rem; }
+.agent-indicator { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; color: var(--muted); font-size: 0.85rem; }
 .agent-indicator .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
 .agent-indicator.is-busy .dot { background: var(--ok); }
 .agent-text { display: none; }
@@ -262,7 +262,9 @@ select, textarea { min-height: 44px; padding: 8px 12px; border: 1px solid var(--
 .results-table th, .results-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .results-table th { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
 .cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.card-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+.card-row { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+/* The whole card is the tap target, not just the name */
+.card-row > a:first-child::after { content: ""; position: absolute; inset: 0; }
 .snippet mark, mark { background: var(--warn-soft); color: inherit; padding: 0 2px; border-radius: 3px; }
 .pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 16px 0; }
 .back-inline { display: inline-flex; align-items: center; min-height: 44px; }
@@ -405,3 +407,13 @@ blockquote.plain { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(
   .shell.detail-open .list-pane { display: block; }
   .shell.detail-open .detail-pane { display: block; }
 }
+
+/* Phones: a Needs-you row is badge + time on one line, the title below at full width */
+@media (max-width: 767px) {
+  .row-stack { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
+  .row-stack .pill { grid-row: 1; grid-column: 1; justify-self: start; }
+  .row-stack time { grid-row: 1; grid-column: 2; }
+  .row-stack .row-main { grid-row: 2; grid-column: 1 / -1; overflow-wrap: anywhere; }
+}
+/* Stand-alone links (not inside a sentence) need a finger-sized hit area */
+.tap { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; }

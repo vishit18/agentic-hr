@@ -22,7 +22,7 @@
       <label class="field"><span>Agent or system step</span><input name="agent" value="{{ q.agent }}" placeholder="extractor, matcher ..."></label>
     </div>
     <label class="check"><input type="checkbox" name="noise" value="1" {{ 'checked' if q.noise else '' }}> Include routine background messages and sign-ins</label>
-    <div class="actions"><button type="submit">Filter</button><a class="small" href="/activity">Clear</a></div>
+    <div class="actions"><button type="submit">Filter</button><a class="small tap" href="/activity">Clear</a></div>
   </form>
   <p class="count"><strong>{{ total }}</strong> event{{ '' if total == 1 else 's' }}</p>
   {% if rows %}

@@ -51,7 +51,7 @@ Already done: compose, Dockerfile, config, status page, worker heartbeat, base t
 ## Phase 5: Hardening and UI (3h)
 - [x] Break-it pass: tests/test_phase5_break_it.py (route auth sweep, XSS, NUL bytes, oversized fields, hostile search). Found and fixed: NUL byte 500s, /status and /health leaking internals to signed-out visitors
 - [ ] Stop Ollama mid-run; confirm fallback and recovery
-- [ ] Phone pass over local Wi-Fi; empty, loading and error states; undo toasts
+- [~] Phone pass: layout checked at 390 px (fixed stacked Needs-you rows, tap targets, sideways scroll). Still to do on a real phone over Wi-Fi: empty, loading and error states; undo toasts
 - [ ] Stranger test: someone new uses it with no instructions
 
 ## Phase 6: Defence prep (2h)

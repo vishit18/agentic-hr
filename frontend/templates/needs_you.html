@@ -28,7 +28,7 @@
     {% for item in rows %}
     {% set label, cls = type_labels.get(item.type, (item.type, 'pill-info')) %}
     <li>
-      <a class="row row-link {{ 'selected' if selected and selected.id == item.id else '' }}" href="/needs-you/{{ item.id }}">
+      <a class="row row-stack row-link {{ 'selected' if selected and selected.id == item.id else '' }}" href="/needs-you/{{ item.id }}">
         <span class="pill {{ cls }}">{{ label }}</span>
         <div class="row-main">
           <div>{{ item.summary }}</div>

@@ -99,7 +99,7 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 | 8.1-8.2 | One hub, "Needs you" inbox | Built (Needs you is the home page with an action for every item type) |
 | 8.3 | Excel export now; Microsoft Graph for SharePoint/OneDrive/Outlook planned | Partial: Excel export built. Graph connectors and Entra sign-in are not built. Not planned for now |
 | 8.4 | Modular workflows and agents, models in config | Built: one module per workflow and agent, prompts versioned in files, model names only in config |
-| 8.5 | Responsive UI, tested on a phone over local Wi-Fi | Partial: mobile layout built (bottom tabs, cards). The phone pass over local Wi-Fi has not been done yet |
+| 8.5 | Responsive UI, tested on a phone over local Wi-Fi | Partial: mobile layout built and checked at 390 px wide (bottom tabs, cards, finger-sized tap targets, no sideways scroll). Not yet tried on a real phone over Wi-Fi |
 
 ## 7. Assumptions
 - Updated CV = same person, different file hash, later date.

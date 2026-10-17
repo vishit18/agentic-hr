@@ -37,7 +37,7 @@
     <label class="field"><span>Received from</span><input type="date" name="date_from" value="{{ q.date_from }}"></label>
     <label class="field"><span>Received to</span><input type="date" name="date_to" value="{{ q.date_to }}"></label>
   </div>
-  <div class="actions"><button type="submit">Filter</button><a class="small" href="/requests">Clear</a></div>
+  <div class="actions"><button type="submit">Filter</button><a class="small tap" href="/requests">Clear</a></div>
 </form>
 
 <p class="count"><strong>{{ total }}</strong> request{{ '' if total == 1 else 's' }}</p>
