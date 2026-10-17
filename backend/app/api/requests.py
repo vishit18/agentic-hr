@@ -472,7 +472,7 @@ async def approve_preview(request_id: int, request: HttpRequest, user: User = De
 
 @router.post("/requests/{request_id:int}/send")
 async def send(request_id: int, request: HttpRequest, user: User = Depends(staff), db: Session = Depends(get_db)) -> Response:
-    """The only place anything leaves Cadence. Needs a named person; goes to Mailpit; logs who decided and what the agent suggested."""
+    """The only place anything leaves Agentic HR. Needs a named person; goes to Mailpit; logs who decided and what the agent suggested."""
     req = get_request(db, request_id)
     items, chosen, people, recipient, subject = await _parse_share_form(request, db, req)
     try:

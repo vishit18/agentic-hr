@@ -20,7 +20,7 @@ from app.core.db import get_db
 from app.core.models import User
 
 _hasher = PasswordHasher()
-_serializer = URLSafeTimedSerializer(settings.app_secret_key, salt="cadence-session")
+_serializer = URLSafeTimedSerializer(settings.app_secret_key, salt="agentic-hr-session")
 
 
 class NotAuthenticated(Exception):

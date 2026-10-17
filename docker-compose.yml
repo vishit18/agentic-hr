@@ -42,6 +42,7 @@ services:
     volumes:
       - ./backend:/srv/backend
       - ./frontend:/srv/frontend
+      - ./eval:/srv/eval
       - ${CVS_DIR}:/cvs:ro
       - ${INBOX_DIR}:/inbox
     ports:

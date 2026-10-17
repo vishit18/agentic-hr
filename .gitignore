@@ -35,3 +35,7 @@ Thumbs.db
 # local claude overrides
 .claude/settings.local.json
 backups/
+
+# evaluation labels and reports name real people
+eval/labels*.jsonl
+eval/*report.md

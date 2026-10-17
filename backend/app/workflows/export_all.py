@@ -1,4 +1,4 @@
-"""Export everything Cadence holds (requirement 7.2): readable CSV and JSON plus the original files, in one zip."""
+"""Export everything Agentic HR holds (requirement 7.2): readable CSV and JSON plus the original files, in one zip."""
 from __future__ import annotations
 
 import csv
@@ -27,7 +27,7 @@ from app.core.models import (
     User,
 )
 
-README = """Cadence HR Hub: full data export
+README = """Agentic HR Hub: full data export
 Created: {when} by {who}
 
 candidates.csv / candidates.json   one row per person, with every CV version in the JSON

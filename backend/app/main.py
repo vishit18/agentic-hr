@@ -28,13 +28,13 @@ from app.api import review as review_api
 from app.api import tickets as tickets_api
 from app.config import settings
 from app.core.auth import NotAuthenticated, get_current_user_optional, read_session
-from app.core.csrf import verify_csrf
+from app.core.csrf import reject_nul_bytes, verify_csrf
 from app.core.db import SessionLocal
 from app.core.models import User
 from app.core.web import render, templates
 
 # verify_csrf only acts on unsafe methods (POST/PUT/PATCH/DELETE); GET pages such as "/" are untouched.
-app = FastAPI(title="Cadence HR Intelligence Hub", dependencies=[Depends(verify_csrf)])
+app = FastAPI(title="Agentic HR Intelligence Hub", dependencies=[Depends(verify_csrf), Depends(reject_nul_bytes)])
 
 app.mount(
     "/static",
@@ -154,6 +154,13 @@ def run_checks() -> list[dict[str, Any]]:
     ]
 
 
+def _visible(request: Request, checks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Signed-out visitors see only OK or Problem. Hostnames, paths and error names stay behind the login."""
+    if read_session(request).get("uid"):
+        return checks
+    return [{"name": c["name"], "ok": c["ok"], "detail": ""} for c in checks]
+
+
 @app.get("/", response_class=HTMLResponse)
 @app.get("/status", response_class=HTMLResponse)
 def status_page(request: Request) -> Response:
@@ -165,11 +172,11 @@ def status_page(request: Request) -> Response:
     return templates.TemplateResponse(
         request,
         "status.html",
-        {"checks": checks, "all_ok": all_ok},
+        {"checks": _visible(request, checks), "all_ok": all_ok},
     )
 
 
 @app.get("/health")
-def health() -> dict[str, Any]:
+def health(request: Request) -> dict[str, Any]:
     checks = run_checks()
-    return {"status": "ok" if all(c["ok"] for c in checks) else "degraded", "checks": checks}
+    return {"status": "ok" if all(c["ok"] for c in checks) else "degraded", "checks": _visible(request, checks)}

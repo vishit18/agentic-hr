@@ -62,7 +62,7 @@ def render_text(company: str, job_title: str | None, reference: str, people: lis
         if p.cv_name:
             lines.append(f"   CV attached: {p.cv_name}")
         lines.append("")
-    lines += ["Kind regards,", sender, "Cadence HR"]
+    lines += ["Kind regards,", sender, "Agentic HR"]
     return "\n".join(x for x in lines if x is not None)
 
 
@@ -84,5 +84,5 @@ def render_html(company: str, job_title: str | None, reference: str, people: lis
             parts.append("<p><strong>Contact:</strong> " + e(", ".join(p.contact)) + "</p>")
         if p.cv_name:
             parts.append(f"<p><em>CV attached: {e(p.cv_name)}</em></p>")
-    parts.append(f"<p>Kind regards,<br>{e(sender)}<br>Cadence HR</p>")
+    parts.append(f"<p>Kind regards,<br>{e(sender)}<br>Agentic HR</p>")
     return "\n".join(parts)

@@ -4,7 +4,7 @@
 - Trigger -> steps -> outcome. Humans only review the outcome.
 - Code for exact things (hashing, normalising, exact matching, filtering, SQL). Models for messy language (extraction, ambiguous identity, explanations).
 - Every AI output traces to source text, model, prompt version, time.
-- A person decides merges and anything leaving Cadence.
+- A person decides merges and anything leaving Agentic HR.
 - Zero running cost and zero data egress: all models run locally via Ollama.
 
 ## 2. Workflow A: CV arrives
@@ -82,7 +82,7 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 | 2.2 | Postgres full text (tsvector) + semantic search (pgvector) over CV content | Built (keyword + meaning, merged by reciprocal rank). Semantic distance cut-off not yet tuned on the full folder |
 | 2.3 | Filters: name, skills, years, education, quals, certs, industry, titles, nationality (when stated) | Built |
 | 2.4 | Results table/cards with highlights and counts | Built (table on desktop, cards on phone) |
-| 3.1-3.4 | Workflow B steps 5-8 | Built. Hard filters in SQL, retrieval by meaning, transparent weighted score, explanations with verified quotes. Quality not yet measured (Phase 4) |
+| 3.1-3.4 | Workflow B steps 5-8 | Built. Hard filters in SQL, retrieval by meaning, transparent weighted score, explanations with verified quotes. Quality: label-free grounding check done (eval/auto.py: names 94%, titles 100% found in the CV text). Accuracy against hand labels not measured (eval/run.py is ready, labels not written) |
 | 3.5 | Approval gate before sharing | Built: preview, editable summaries, per-candidate CV and contact tick boxes, decision logged |
 | 4.1-4.5 | Section 4 | Built: auto-link, possible-match review item with Adjudicator suggestion, side-by-side review, merge with confirmation and undo from the Activity tab, unlink of an auto-linked CV with undo |
 | 5.1-5.7 | Request model, owner, shortlist and shared tables | Built (list with filters, detail, owner reassign, shortlist and shared status) |
@@ -92,14 +92,14 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 | 7.1 | Private by default, role-based access, nothing leaves the machine | Built. Engineers see only tickets; HR staff see candidates and requests; only hr_admin sees Settings and exports everything |
 | 7.2 | Export all data (CSV/JSON + original files) | Built (admin only, one zip, logged) |
 | 7.3 | Login + roles; on AWS: Entra ID SSO | Built locally (argon2, roles, user management in Settings). SSO is the AWS plan |
-| 7.4 | Section 8 controls | |
+| 7.4 | Section 8 controls | Built and tested: upload checks, auth on every route (route-sweep test), CSRF, XSS and NUL-byte handling, rate limits, argon2, secrets in env only, hidden internals for signed-out visitors (tests/test_phase5_break_it.py). Not done: formal pen test, SSO, shared rate-limit store |
 | 7.5 | Audit log table | Built: every step and action; Activity timeline with filters |
 | 7.6 | Local: pg_dump script. AWS plan: RDS automated backups + S3 versioning | Built: scripts/backup.ps1 (and .sh), restore.ps1. Tested: a real dump was made and listed |
 | 7.7 | Retention setting + scheduled purge job | Built, off by default. Settings shows how many profiles a period would remove before it can be applied; purge runs daily; counts are logged |
 | 8.1-8.2 | One hub, "Needs you" inbox | Built (Needs you is the home page with an action for every item type) |
-| 8.3 | Excel export now; Microsoft Graph for SharePoint/OneDrive/Outlook planned | |
-| 8.4 | Modular workflows and agents, models in config | |
-| 8.5 | Responsive UI, tested on a phone over local Wi-Fi | |
+| 8.3 | Excel export now; Microsoft Graph for SharePoint/OneDrive/Outlook planned | Partial: Excel export built. Graph connectors and Entra sign-in are not built. Design, permissions and cost are in DEFENCE.md section 3 |
+| 8.4 | Modular workflows and agents, models in config | Built: one module per workflow and agent, prompts versioned in files, model names only in config |
+| 8.5 | Responsive UI, tested on a phone over local Wi-Fi | Partial: mobile layout built (bottom tabs, cards). The phone pass over local Wi-Fi has not been done yet |
 
 ## 7. Assumptions
 - Updated CV = same person, different file hash, later date.
@@ -151,4 +151,4 @@ Why these models: open weights, free to run on a 12GB GPU, JSON-schema structure
 ## 10. Copilot Studio argument (both sides)
 For: already inside M365, native connectors, quick for simple flows, familiar admin and governance.
 Against: identity resolution and evidence-verified matching are hard to express and test in a visual builder; limited evals and versioning; message-based licensing at 11k CVs; coarser audit trail; less control over which model sees the data; lock-in.
-Position: custom code keeps the logic testable and the data inside Cadence's own AWS account, while Microsoft Graph keeps it connected to M365.
+Position: custom code keeps the logic testable and the data inside Agentic HR's own AWS account, while Microsoft Graph keeps it connected to M365.

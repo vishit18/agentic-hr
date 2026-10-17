@@ -124,7 +124,7 @@ def draft_question(req: Request, missing: list[str]) -> str:
     return (
         f"Hello{' ' + req.contact_name if req.contact_name else ''},\n\n"
         f"Thank you for your hiring request{' for ' + req.job_title if req.job_title else ''}. "
-        f"To start the search we still need:\n{items}\n\nCould you reply with these details?\n\nKind regards,\nCadence HR"
+        f"To start the search we still need:\n{items}\n\nCould you reply with these details?\n\nKind regards,\nAgentic HR"
     )
 
 

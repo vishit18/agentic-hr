@@ -43,22 +43,23 @@ Already done: compose, Dockerfile, config, status page, worker heartbeat, base t
 - [x] Reports + Excel export, export-all (7.2), retention setting (7.7), pg_dump backup script (7.6)
 
 ## Phase 4: Evaluation (2h)
-- [ ] Hand-label ~40 CVs into eval/labels.jsonl (field values + duplicate groups; no raw text)
-- [ ] eval/run.py: field accuracy, dedup precision/recall, 3 sample requests with expected top candidates
+- [ ] Hand-label ~40 CVs into eval/labels.jsonl (optional: needs a person to read the CVs; `run.py --sample 40` writes the skeleton)
+- [x] eval/run.py: field accuracy, dedup precision/recall, 3 sample requests with expected top candidates (runs once labels exist)
+- [x] eval/auto.py: label-free grounding and consistency check, counts and filenames only (see eval/auto_report.md)
 - [ ] Write up failure cases
 
 ## Phase 5: Hardening and UI (3h)
-- [ ] Break-it pass: malformed/huge files, prompt-injection CV, XSS in fields, role checks, CSRF
+- [x] Break-it pass: tests/test_phase5_break_it.py (route auth sweep, XSS, NUL bytes, oversized fields, hostile search). Found and fixed: NUL byte 500s, /status and /health leaking internals to signed-out visitors
 - [ ] Stop Ollama mid-run; confirm fallback and recovery
 - [ ] Phone pass over local Wi-Fi; empty, loading and error states; undo toasts
 - [ ] Stranger test: someone new uses it with no instructions
 
 ## Phase 6: Defence prep (2h)
-- [ ] Workflow diagrams (trigger, steps, outcome, actor per step)
-- [ ] Requirements table fully filled
-- [ ] AWS diagram + monthly cost working
-- [ ] Copilot Studio for and against
-- [ ] Cleanup script deleting all data after the meeting and the confirmation email to isa@usecadence.tech
+- [x] Workflow diagrams (trigger, steps, outcome, actor per step): docs/DEFENCE.md sections 1-2
+- [x] Requirements table fully filled: ARCHITECTURE.md section 6 (every row now has an answer; 8.3 and 8.5 are partial)
+- [x] AWS diagram + monthly cost working: DEFENCE.md section 3 (about 510 USD a month production, about 230 lean; numbers are estimates to re-check in the Pricing Calculator)
+- [x] Copilot Studio for and against: DEFENCE.md section 4
+- [x] Cleanup script (scripts/cleanup.ps1, dry run by default) and confirmation email draft (docs/CLEANUP_EMAIL.md, not sent)
 
 ## Before the meeting
 - [ ] Full ingest of cvs/ done and timed, so the live demo shows new CVs and requests arriving

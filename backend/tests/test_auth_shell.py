@@ -96,7 +96,7 @@ def test_logout_with_header_token_works(client, users) -> None:
 
 
 def test_forged_session_cookie_is_ignored(client, users) -> None:
-    client.cookies.set("cadence_session", "forged.value.here")
+    client.cookies.set("agentic_hr_session", "forged.value.here")
     assert client.get("/needs-you", follow_redirects=False).status_code == 303
 
 

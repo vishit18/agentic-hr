@@ -52,17 +52,17 @@ def export_report(year: int | None = None, quarter: int | None = None, user: Use
           output={"year": y, "quarter": q, "requests": report["received"]})
     db.commit()
     return Response(data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    headers={"Content-Disposition": f'attachment; filename="cadence-requests-{y}-Q{q}.xlsx"'})
+                    headers={"Content-Disposition": f'attachment; filename="agentic-hr-requests-{y}-Q{q}.xlsx"'})
 
 
 @router.get("/exports/all")
 def export_all(user: User = Depends(admin_only), db: Session = Depends(get_db)) -> Response:
-    tmp = Path(tempfile.mkstemp(prefix="cadence-export-", suffix=".zip")[1])
+    tmp = Path(tempfile.mkstemp(prefix="agentic-hr-export-", suffix=".zip")[1])
     counts = build_export(db, tmp, user.email)
     audit(db, actor_type="user", actor_id=user.id, actor_name=user.email, action="export.all", output=counts)
     db.commit()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
-    return FileResponse(tmp, media_type="application/zip", filename=f"cadence-export-{stamp}.zip",
+    return FileResponse(tmp, media_type="application/zip", filename=f"agentic-hr-export-{stamp}.zip",
                         background=BackgroundTask(lambda: tmp.unlink(missing_ok=True)))
 
 

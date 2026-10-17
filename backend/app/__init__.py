@@ -1,1 +1,1 @@
-"""Cadence HR Intelligence Hub backend."""
+"""Agentic HR Intelligence Hub backend."""

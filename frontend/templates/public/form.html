@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Hiring request · Cadence HR{% endblock %}
+{% block title %}Hiring request · Agentic HR{% endblock %}
 {% block header %}
-<header class="topbar"><span class="brand">Cadence HR</span></header>
+<header class="topbar"><span class="brand">Agentic HR</span></header>
 {% endblock %}
 
 {% block content %}
 <div class="public-wrap">
 <section class="card">
-  <h1>Ask Cadence HR for help hiring</h1>
+  <h1>Ask Agentic HR for help hiring</h1>
   <p class="muted">Request for <strong>{{ company }}</strong>. Fill in what you know; we will come back to you if we need anything else.</p>
   {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
   <form method="post" action="/apply/{{ token }}" enctype="multipart/form-data" class="stack">

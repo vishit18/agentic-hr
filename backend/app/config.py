@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     max_pdf_pages: int = 15
 
     # Sessions and login
-    session_cookie: str = "cadence_session"
+    session_cookie: str = "agentic_hr_session"
     session_max_age_seconds: int = 60 * 60 * 12
     login_max_failures_per_email: int = 5
     login_max_failures_per_ip: int = 20
@@ -64,17 +64,17 @@ class Settings(BaseSettings):
     job_stale_seconds: int = 600
 
     # Demo accounts (seed only creates users whose password is set)
-    seed_recruiter_email: str = "recruiter@cadence.local"
+    seed_recruiter_email: str = "recruiter@agentic-hr.local"
     seed_recruiter_password: str = ""
-    seed_admin_email: str = "admin@cadence.local"
+    seed_admin_email: str = "admin@agentic-hr.local"
     seed_admin_password: str = ""
-    seed_engineer_email: str = "engineer@cadence.local"
+    seed_engineer_email: str = "engineer@agentic-hr.local"
     seed_engineer_password: str = ""
 
     # Email
     smtp_host: str = "mailpit"
     smtp_port: int = 1025
-    mail_from: str = "hub@cadence.local"
+    mail_from: str = "hub@agentic-hr.local"
 
     @property
     def psycopg_dsn(self) -> str:

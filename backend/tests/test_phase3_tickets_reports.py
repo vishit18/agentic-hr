@@ -299,7 +299,7 @@ def test_excel_export_has_the_numbers_and_is_logged(db, staff, users) -> None:
     seed_quarter(db, users)
     resp = staff.get("/reports/export.xlsx?year=2026&quarter=2")
     assert resp.status_code == 200 and "spreadsheetml" in resp.headers["content-type"]
-    assert 'filename="cadence-requests-2026-Q2.xlsx"' in resp.headers["content-disposition"]
+    assert 'filename="agentic-hr-requests-2026-Q2.xlsx"' in resp.headers["content-disposition"]
     wb = load_workbook(io.BytesIO(resp.content))
     assert wb.sheetnames == ["Summary", "Requests", "Shared candidates"]
     summary = {r[0]: r[1] for r in wb["Summary"].iter_rows(values_only=True) if r[0]}
@@ -353,10 +353,10 @@ def test_settings_is_admin_only(db, client, users) -> None:
 
 def test_admin_creates_a_user_who_can_sign_in_with_a_hashed_password(db, admin, client) -> None:
     h = {"X-CSRF-Token": token(admin)}
-    data = {"name": "New Person", "email": "New@Cadence.test", "role": "recruiter", "password": "a-long-password-1"}
+    data = {"name": "New Person", "email": "New@agentic-hr.test", "role": "recruiter", "password": "a-long-password-1"}
     assert admin.post("/settings/users", data=data).status_code == 403  # csrf
     admin.post("/settings/users", data=data, headers=h)
-    u = db.scalars(select(User).where(User.email == "new@cadence.test")).one()
+    u = db.scalars(select(User).where(User.email == "new@agentic-hr.test")).one()
     assert u.password_hash.startswith("$argon2") and verify_password(u.password_hash, "a-long-password-1")
     assert "error" in admin.post("/settings/users", data=data, headers=h, follow_redirects=False).headers["location"]  # duplicate
     short = admin.post("/settings/users", data={**data, "email": "x@y.test", "password": "short"}, headers=h, follow_redirects=False)
