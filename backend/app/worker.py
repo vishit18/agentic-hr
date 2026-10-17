@@ -41,7 +41,7 @@ class IngestPacer:
     """Cool-down between batches of CVs. After every `batch_size` finished CV jobs, CV work pauses for
     `pause_seconds` (requests and other jobs keep running). batch_size 0 turns it off."""
 
-    def __init__(self, batch_size: int, pause_seconds: int, clock: "Callable[[], float]" = time.monotonic) -> None:
+    def __init__(self, batch_size: int, pause_seconds: int, clock: Callable[[], float] = time.monotonic) -> None:
         self.batch_size, self.pause_seconds, self.clock = batch_size, pause_seconds, clock
         self._done = 0
         self._until = 0.0
@@ -69,7 +69,7 @@ class IngestPacer:
 pacer = IngestPacer(settings.ingest_batch_size, settings.ingest_batch_pause_seconds)
 
 
-def run_one(factory: "sessionmaker[Session]", worker_id: str, pacer: IngestPacer | None = None) -> bool:
+def run_one(factory: sessionmaker[Session], worker_id: str, pacer: IngestPacer | None = None) -> bool:
     """Claim and run a single job. Returns False if there was nothing to do.
 
     A failing job never blocks others and never half-writes: the handler runs in its own

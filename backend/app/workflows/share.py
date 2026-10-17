@@ -48,7 +48,7 @@ def company_view(item: ShortlistItem, version: CandidateVersion, file: File | No
 
 
 def render_text(company: str, job_title: str | None, reference: str, people: list[SharedCandidate], sender: str) -> str:
-    lines = [f"Hello,", "", f"Here is the shortlist for {job_title or 'your role'} (reference {reference}).", ""]
+    lines = ["Hello,", "", f"Here is the shortlist for {job_title or 'your role'} (reference {reference}).", ""]
     for i, p in enumerate(people, start=1):
         lines += [f"{i}. {p.name}", f"   {p.summary}" if p.summary else ""]
         if p.experience:

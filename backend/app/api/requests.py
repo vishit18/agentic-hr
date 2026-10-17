@@ -7,10 +7,9 @@ from datetime import datetime, timedelta, timezone
 from email_validator import EmailNotValidError, validate_email
 from fastapi import APIRouter, Depends, File as FormFile, Form, HTTPException, Request as HttpRequest, UploadFile
 from fastapi.responses import RedirectResponse, Response
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.core import queue
 from app.core.audit import audit
 from app.core.auth import require_staff
@@ -34,7 +33,7 @@ from app.core.uploads import save_upload
 from app.core.web import render
 from app.matching.scoring import Requirement, score_candidate
 from app.matching.search import Filters, search
-from app.workflows.hiring_request import OPEN_STATUSES, RequestInput, create_request, guess_category, requests_dir
+from app.workflows.hiring_request import RequestInput, create_request, guess_category, requests_dir
 from app.workflows.share import company_view, render_html, render_text
 
 router = APIRouter(dependencies=[])
