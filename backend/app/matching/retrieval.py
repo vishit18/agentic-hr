@@ -75,22 +75,37 @@ def retrieve(session: Session, query_text: str, candidate_ids: list[int], top_k:
         sims = {cid: 1.0 - float(d) for cid, d in rows}
     except LLMError:
         mode = "keyword_fallback"
-    if not sims:
-        mode = "keyword_fallback"
+    def keyword_ids(pool: list[int]) -> list[int]:
         tsq = func.websearch_to_tsquery("english", " OR ".join(query_text.split()[:30]))
         rows = session.execute(
             select(Candidate.id)
             .join(V, V.id == Candidate.current_version_id)
-            .where(Candidate.id.in_(candidate_ids), V.search_tsv.op("@@")(tsq))
+            .where(Candidate.id.in_(pool), V.search_tsv.op("@@")(tsq))
             .order_by(func.ts_rank(V.search_tsv, tsq).desc())
             .limit(top_k)
         ).all()
-        sims = {r[0]: 0.0 for r in rows}
-    ids = list(sims)
+        return [r[0] for r in rows]
+
+    if not sims:
+        mode = "keyword_fallback"
+        sims = {cid: 0.0 for cid in keyword_ids(candidate_ids)}
+    extra: list[int] = []
+    waiting_note: list[str] = []
+    if mode == "semantic":
+        # Embedding jobs can queue behind a big ingest. Those people must not silently vanish from matching.
+        embedded = set(session.scalars(
+            select(Candidate.id).join(V, V.id == Candidate.current_version_id)
+            .join(CandidateEmbedding, CandidateEmbedding.candidate_version_id == V.id)
+            .where(Candidate.id.in_(candidate_ids))))
+        waiting = [c for c in candidate_ids if c not in embedded]
+        if waiting:
+            extra = keyword_ids(waiting)
+            waiting_note = [f"{len(waiting)} candidate(s) have not been embedded yet, so they were matched by keywords only"]
+    ids = list(sims) + [c for c in extra if c not in sims]
     versions = session.scalars(
         select(V).join(Candidate, Candidate.current_version_id == V.id).where(Candidate.id.in_(ids or [-1]))
     ).all()
     by_cand = {v.candidate_id: v for v in versions}
     ordered = [by_cand[c] for c in ids if c in by_cand]
-    note = ["Ranked by keywords because the AI embedding service was unavailable"] if mode == "keyword_fallback" else []
+    note = ["Ranked by keywords because the AI embedding service was unavailable"] if mode == "keyword_fallback" else waiting_note
     return Retrieved(ordered, sims if mode == "semantic" else {}, mode, notes=note)

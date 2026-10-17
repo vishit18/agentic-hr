@@ -309,3 +309,23 @@ def test_score_uses_only_the_components_that_apply() -> None:
     assert s.score == 100.0 and s.components["similarity"] is None and s.components["title"] is None
     s2 = score_candidate([Requirement(1, "must", "certification", "CPA")], v, job_title=None, min_years=None, similarity=None)
     assert s2.score == 0.0
+
+
+def test_candidates_without_an_embedding_yet_are_still_considered(env) -> None:
+    """While embedding jobs are queued behind a big ingest, matching must not silently ignore those people."""
+    db = env.db
+    embedded = add_candidate(db, "Has Vector", certs=["CFA"], years=9, title="Accountant", text="Has Vector CFA accountant banking")
+    waiting = add_candidate(db, "No Vector Yet", certs=["CFA"], years=9, title="Accountant", text="No Vector Yet CFA accountant banking")
+    with_embedding(db, embedded, NEAR)
+    result = retrieval.retrieve(db, "CFA accountant banking", [embedded.id, waiting.id])
+    assert {v.candidate_id for v in result.versions} == {embedded.id, waiting.id}
+    assert any("not been embedded yet" in n for n in result.notes)
+    assert result.mode == "semantic"
+
+
+def test_no_note_when_everyone_is_embedded(env) -> None:
+    db = env.db
+    a = add_candidate(db, "Has Vector", certs=["CFA"], years=9, title="Accountant", text="CFA accountant")
+    with_embedding(db, a, NEAR)
+    result = retrieval.retrieve(db, "CFA accountant", [a.id])
+    assert result.notes == []

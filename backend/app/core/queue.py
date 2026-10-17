@@ -62,10 +62,11 @@ def enqueue(
     return session.get(Job, job_id) if job_id is not None else None
 
 
-def claim(session: Session, worker_id: str, exclude_prefix: str | None = None) -> Job | None:
+def claim(session: Session, worker_id: str, exclude_prefix: str | None = None, only_type: str | None = None) -> Job | None:
     """Claim one runnable job (or a stale running one from a crashed worker). Caller commits.
 
     exclude_prefix skips job types such as "cv." (used for the cool-down pause between CV batches).
+    only_type claims just that job type (used to run light jobs, such as embeddings, on their own).
     """
     now = _now()
     stale_before = now - timedelta(seconds=settings.job_stale_seconds)
@@ -83,6 +84,8 @@ def claim(session: Session, worker_id: str, exclude_prefix: str | None = None) -
     )
     if exclude_prefix:
         stmt = stmt.where(~Job.type.startswith(exclude_prefix))
+    if only_type:
+        stmt = stmt.where(Job.type == only_type)
     job = session.scalars(stmt).first()
     if job is None:
         return None
