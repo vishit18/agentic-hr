@@ -50,9 +50,9 @@ Already done: compose, Dockerfile, config, status page, worker heartbeat, base t
 
 ## Phase 5: Hardening and UI (3h)
 - [x] Break-it pass: tests/test_phase5_break_it.py (route auth sweep, XSS, NUL bytes, oversized fields, hostile search). Found and fixed: NUL byte 500s, /status and /health leaking internals to signed-out visitors
-- [ ] Stop Ollama mid-run; confirm fallback and recovery
-- [~] Phone pass: layout checked at 390 px (fixed stacked Needs-you rows, tap targets, sideways scroll). Still to do on a real phone over Wi-Fi: empty, loading and error states; undo toasts
-- [ ] Stranger test: someone new uses it with no instructions
+- [x] Stop Ollama mid-run; confirm fallback and recovery: tested live on real data with the AI unreachable (keyword shortlist of 15, template explanations, flagged AI pending); recovery covered by tests
+- [~] Phone pass: layout checked at 390 px (fixed stacked Needs-you rows, tap targets, sideways scroll). Empty and error states are tested for every page; undo exists for merges, unlinks and shortlist removal. Still to do on a real phone over Wi-Fi
+- [ ] Stranger test: someone new uses it with no instructions (checklist and scoring sheet in docs/STRANGER_TEST.md; needs a person)
 
 ## Phase 6: Defence prep (2h)
 - [x] Workflow diagrams (trigger, steps, outcome, actor per step): docs/DEFENCE.md sections 1-2

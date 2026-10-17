@@ -114,3 +114,29 @@ def test_status_and_health_hide_internal_detail_from_signed_out_visitors(client,
     assert page.status_code == 200 and "/cvs" not in page.text and "ollama" not in page.text.lower().replace("ollama (local ai)", "")
     login(client, "recruiter@test.local")
     assert any(c["detail"] for c in client.get("/health").json()["checks"])
+
+
+EMPTY_STATE_PAGES = ["/needs-you", "/home", "/candidates", "/candidates?q=zzzznothing", "/candidates/new", "/requests",
+                     "/requests?status=ready_for_review", "/requests/new", "/activity", "/activity?tab=agents", "/reports",
+                     "/problems", "/status"]
+UGLY = ("Traceback", "None</", ">None<", "undefined", "{{", "{%", "NaN", "Internal Server Error")
+
+
+@pytest.mark.parametrize("role", ["recruiter", "hr_admin"])
+def test_every_page_has_a_clean_empty_state(client, users, role) -> None:
+    """A brand new install has no data. Every page must still read as a calm, finished page."""
+    login(client, f"{role}@test.local")
+    for path in EMPTY_STATE_PAGES:
+        page = client.get(path)
+        assert page.status_code == 200, (path, page.status_code)
+        bad = [u for u in UGLY if u in page.text]
+        assert not bad, (path, bad)
+
+
+def test_missing_things_show_a_friendly_page_not_a_stack_trace(client, users) -> None:
+    login(client, "recruiter@test.local")
+    for path in ["/candidates/99999", "/requests/99999", "/needs-you/99999", "/nope", "/candidates/abc", "/requests/-1"]:
+        page = client.get(path)
+        assert page.status_code in (404, 422), (path, page.status_code)
+        assert "Traceback" not in page.text and "File \"" not in page.text, path
+        assert page.headers["content-type"].startswith("text/html") or page.status_code == 422, path
