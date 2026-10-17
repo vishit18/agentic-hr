@@ -6,6 +6,7 @@ Years of experience are computed from dates here, never taken from the model.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
@@ -39,9 +40,24 @@ class BuiltProfile:
     low_confidence: bool = False
 
 
+def _compact(text: str) -> str:
+    """Letters and digits only, accents removed: 'Ernst & Young' and 'ernst&young' look the same."""
+    return re.sub(r"[^a-z0-9]", "", unicodedata.normalize("NFKD", text.lower()).encode("ascii", "ignore").decode())
+
+
 def _in_text(needle: str | None, haystack: str, min_len: int = 3) -> bool:
+    """Is this value really in the CV? Whole words first, then a punctuation- and accent-blind comparison.
+
+    The second comparison only applies to values of 6+ letters, so a short or made-up name cannot match by
+    accident across word edges. `haystack` is already squashed (lower-case, collapsed spaces).
+    """
     n = squash(needle or "")
-    return len(n) >= min_len and n in haystack
+    if len(n) < min_len:
+        return False
+    if re.search(rf"(?<![a-z0-9]){re.escape(n)}(?![a-z0-9])", haystack):
+        return True
+    c = _compact(n)
+    return len(c) >= 6 and c in _compact(haystack)
 
 
 def _name_ok(name: str | None, haystack: str) -> bool:
