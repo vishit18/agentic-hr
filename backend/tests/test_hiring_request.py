@@ -329,3 +329,23 @@ def test_no_note_when_everyone_is_embedded(env) -> None:
     with_embedding(db, a, NEAR)
     result = retrieval.retrieve(db, "CFA accountant", [a.id])
     assert result.notes == []
+
+
+@pytest.mark.parametrize("category,req,cv,expected", [
+    ("skill", "Excel", "Excellent communication and leadership. Strong attention to detail.", "unmet"),
+    ("skill", "Excel", "Advanced Excel, VBA and PowerPoint", "met"),
+    ("skill", "Excel", "Built models in MS-Excel.", "met"),
+    ("skill", "R", "Programming: C, Java, Rust", "unmet"),
+    ("certification", "CFA", "Led the cfab project at Acme", "unmet"),
+    ("certification", "CFA", "CFA Level II candidate", "met"),
+    ("industry", "oil", "Cleaned the toilet blocks at the stadium", "unmet"),
+    ("industry", "oil and gas", "Analyst in the Oil and Gas sector", "met"),
+    ("language", "Arabic", "Roasted arabica coffee beans", "unmet"),
+    ("language", "Arabic", "Languages: Arabic (native), English", "met"),
+    ("skill", "Financial modelling", "Built financial models for acquisitions", "met"),
+    ("skill", "Reporting", "Prepared monthly reports for the board", "met"),
+])
+def test_requirement_is_matched_on_whole_words_not_inside_other_words(category, req, cv, expected) -> None:
+    v = CandidateVersion(full_name="X", certifications=[], skills=[], years_experience=5.0, titles=[],
+                         industries=[], education_text="", qualifications=[], search_text=cv, data={})
+    assert evaluate(Requirement(None, "must", category, req), v).status == expected

@@ -54,17 +54,52 @@ def tokens(text: str) -> list[str]:
     return [w for w in re.findall(r"[a-z0-9+#]+", squash(text)) if (len(w) >= 2 or w.isdigit()) and w not in _STOP]
 
 
+_SUFFIXES = ("ings", "ing", "ers", "er", "ions", "ion", "ed", "es", "s")
+
+
+def _stem(word: str) -> str:
+    """Cheap, symmetric word-ending removal: model, models, modelling and modeller all become 'model'."""
+    for suf in _SUFFIXES:
+        if word.endswith(suf) and len(word) - len(suf) >= 3:
+            word = word[: -len(suf)]
+            break
+    return re.sub(r"([a-z])\1$", r"\1", word)  # modell -> model
+
+
+def _stems(text: str) -> list[str]:
+    return [_stem(w) for w in tokens(text)]
+
+
+def _mentions(text: str, v: CandidateVersion) -> bool:
+    """Is this requirement written in the CV? Whole words only, in order, ignoring simple word endings.
+
+    "Excel" is not found in "excellent", "oil" not in "toilet", "Arabic" not in "arabica", but
+    "financial modelling" is found in "built financial models".
+    """
+    hay = squash(v.search_text or "")
+    needle = squash(text)
+    if not needle:
+        return False
+    if re.search(rf"(?<![a-z0-9+#]){re.escape(needle)}(?![a-z0-9+#])", hay):
+        return True
+    want = _stems(text)
+    if not want:
+        return False
+    have = _stems(v.search_text or "")
+    n = len(want)
+    return any(have[i:i + n] == want for i in range(len(have) - n + 1))
+
+
 def _in_cv(text: str, v: CandidateVersion) -> bool:
-    return squash(text) in squash(v.search_text or "")
+    return _mentions(text, v)
 
 
 def _fraction_in_cv(text: str, v: CandidateVersion) -> float:
-    words = tokens(text)
+    words = _stems(text)
     if not words:
         return 0.0
-    hay = squash(v.search_text or "")
-    hits = sum(1 for w in words if re.search(rf"\b{re.escape(w)}", hay))
-    return hits / len(words)
+    have = set(_stems(v.search_text or ""))
+    return sum(1 for w in words if w in have) / len(words)
 
 
 def evaluate(req: Requirement, v: CandidateVersion) -> ReqResult:
